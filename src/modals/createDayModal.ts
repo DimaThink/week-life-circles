@@ -6,6 +6,11 @@ import { renderDayTemplate } from '../templates';
 import { ensureFolder } from '../vaultUtil';
 import { defaultSquareKey, renderSquarePicker } from './swatches';
 
+// Obsidian re-exports `moment`, but under strict type-checking its type can
+// resolve to `any` (triggers @typescript-eslint/no-unsafe-*). Pin a minimal
+// typed view so weekday formatting stays type-safe in every environment.
+const momentFmt = moment as unknown as (date: Date) => { format(fmt: string): string };
+
 export interface ModalHost {
   readonly app: App;
   readonly settings: Settings;
@@ -25,7 +30,7 @@ export class CreateDayModal extends Modal {
     this.date = host.calendar ? host.calendar.personalToDate(target.yy, target.doy) : null;
     if (this.date) {
       this.dateStr = formatYMD(this.date);
-      this.weekdayName = moment(this.date).format('dddd'); // in Obsidian's language
+      this.weekdayName = momentFmt(this.date).format('dddd'); // in Obsidian's language
     }
   }
 
