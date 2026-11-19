@@ -1,5 +1,5 @@
-import { App, Notice, Plugin, PluginSettingTab, Setting, normalizePath } from 'obsidian';
-import { DEFAULT_SETTINGS, Settings, SquareDef, normalizeSettings } from './config';
+import { App, Notice, Plugin, PluginSettingTab, Setting, normalizePath, requestUrl } from 'obsidian';
+import { DEFAULT_SETTINGS, Settings, SquareDef, normalizeSettings, encodeConfig, parseConfigPayload } from './config';
 
 /**
  * What the settings tab needs from the plugin. A plain interface, NOT a
@@ -44,6 +44,42 @@ export class WeekLifeCirclesSettingTab extends PluginSettingTab {
     };
     const trim = (v: string): string => v.trim();
     const folder = (fallback: string) => (v: string): string => normalizePath(v.trim() || fallback);
+
+    // --- Import / export: set up a new device (e.g. phone) in one paste ---
+    new Setting(containerEl).setName('Configuration').setHeading();
+    new Setting(containerEl)
+      .setName('Export config')
+      .setDesc('Copy every setting as one code to paste on another device. It includes your Immich key, so keep the code private.')
+      .addButton(b => b.setButtonText('Copy config code').onClick(() => {
+        void (async () => {
+          try {
+            await navigator.clipboard.writeText(encodeConfig(s));
+            new Notice('Config code copied — it contains your Immich key, keep it private.');
+          } catch {
+            new Notice('Could not access the clipboard.');
+          }
+        })();
+      }));
+    let importInput = '';
+    new Setting(containerEl)
+      .setName('Import config')
+      .setDesc('Paste a config code — or a URL that returns one — and Apply. This replaces all current settings.')
+      .addText(t => t.setPlaceholder('code, or https://…').onChange(v => { importInput = v; }))
+      .addButton(b => b.setButtonText('Apply').setCta().onClick(() => {
+        void (async () => {
+          const raw = importInput.trim();
+          if (!raw) { new Notice('Paste a config code or URL first.'); return; }
+          try {
+            const payload = /^https?:\/\//i.test(raw) ? (await requestUrl({ url: raw })).text : raw;
+            Object.assign(s, normalizeSettings(parseConfigPayload(payload)));
+            await save();
+            new Notice('Config imported.');
+            this.display();
+          } catch {
+            new Notice('Import failed — not a valid config code or URL.');
+          }
+        })();
+      }));
 
     addText('Birth date', 'birthDate', trim, "Your date of birth — the grid's anchor (YYYY-MM-DD)", 'YYYY-MM-DD');
 

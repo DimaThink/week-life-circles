@@ -162,3 +162,32 @@ export function parseBirthDate(
   if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d) return null;
   return { birthYear: y, birthMonth: mo, birthDay: d };
 }
+
+/**
+ * A compact, self-contained config code: base64 of the settings JSON. Includes
+ * the Immich key, so the code is as sensitive as the key — meant for moving
+ * your own setup to another device (e.g. phone) in one paste.
+ */
+export function encodeConfig(s: Settings): string {
+  const bytes = new TextEncoder().encode(JSON.stringify(s));
+  let bin = '';
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin);
+}
+
+/** Decode a config code or raw JSON (e.g. fetched from a URL) into settings. */
+export function parseConfigPayload(payload: string): Partial<Settings> {
+  const text = payload.trim();
+  const json = text.startsWith('{') ? text : decodeBase64Utf8(text);
+  const parsed: unknown = JSON.parse(json);
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('config payload is not an object');
+  }
+  return parsed;
+}
+
+function decodeBase64Utf8(code: string): string {
+  const bin = atob(code);
+  const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}

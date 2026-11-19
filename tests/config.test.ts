@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { DEFAULT_SETTINGS, DEFAULT_SQUARES, normalizeSettings, parseBirthDate } from '../src/config';
+import { DEFAULT_SETTINGS, DEFAULT_SQUARES, normalizeSettings, parseBirthDate, encodeConfig, parseConfigPayload } from '../src/config';
 
 describe('DEFAULT_SETTINGS', () => {
   it('has sane defaults', () => {
@@ -69,5 +69,32 @@ describe('parseBirthDate', () => {
     expect(parseBirthDate('not-a-date')).toBeNull();
     expect(parseBirthDate('2000-13-40')).toBeNull();
     expect(parseBirthDate('2000-02-30')).toBeNull();
+  });
+});
+
+describe('config code (encode/parse)', () => {
+  const sample = normalizeSettings({
+    ...DEFAULT_SETTINGS,
+    birthDate: '1998-04-30',
+    immichApiKey: 'secret-key',
+    weekTemplate: '# Що було\n', // non-ASCII survives
+    squares: [{ key: 'korea.png', name: 'Korea', color: null }],
+  });
+
+  it('round-trips settings through a code (incl. non-ASCII + the key)', () => {
+    const code = encodeConfig(sample);
+    expect(code).not.toContain('secret-key'); // encoded, not plaintext
+    const back = normalizeSettings(parseConfigPayload(code));
+    expect(back).toEqual(sample);
+  });
+
+  it('also accepts raw JSON (as a URL would return)', () => {
+    const json = JSON.stringify(sample);
+    expect(normalizeSettings(parseConfigPayload(json))).toEqual(sample);
+  });
+
+  it('rejects garbage / non-object payloads', () => {
+    expect(() => parseConfigPayload('not a code')).toThrow();
+    expect(() => parseConfigPayload(btoa('[1,2,3]'))).toThrow();
   });
 });

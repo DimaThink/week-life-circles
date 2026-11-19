@@ -1,6 +1,6 @@
 {
   "name": "week-life-circles",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Life-in-weeks grid journal: one colored circle per week or day of your life, each linked to a note.",
   "main": "main.js",
   "type": "module",

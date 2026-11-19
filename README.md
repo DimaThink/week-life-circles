@@ -74,6 +74,19 @@ an embed: `![[england.png|14]]`.
 | Week template / Day template | Text of new notes. Placeholders: `{{ww}}`, `{{yy}}`, `{{square}}`, `{{date}}`, `{{photos}}` (week), `{{weekday}}` (day). The weekday is written in Obsidian's language. |
 | Squares | The list of squares: a name plus either a color or an image file in your vault. |
 | Immich | Optional photo picker, see below. |
+| Configuration | **Export** copies all settings as one code; **Import** applies a pasted code, or fetches one from a URL you paste. Good for setting up a second device. |
+
+## Import / export configuration
+
+Set up another device (e.g. a phone) without re-typing everything: on the
+already-configured device, go to **Settings → Week Life Circles → Configuration
+→ Copy config code**. On the other device, paste it into **Import config** and
+press Apply — every setting fills in.
+
+The code is base64 of your settings and **includes your Immich API key**, so
+treat it like a password. You can also paste a **URL** that returns the config
+(raw JSON, or the same code) — the plugin fetches it only when you press Apply
+(see the network disclosure below).
 
 ## Commands
 
@@ -87,7 +100,10 @@ an embed: `![[england.png|14]]`.
 If you run your own [Immich](https://immich.app) photo server, the "Create week
 file" dialog can show that week's photos so you can pick some to attach.
 
-**Disclosure.** This is the only part of the plugin that uses the network:
+**Disclosure.** The plugin touches the network in only two places, and each runs
+*only* when you ask: this Immich picker, and **Import config** when you paste a
+URL (it fetches that URL's text and reads it as your settings). There is no
+telemetry and nothing is ever sent to the plugin author. For Immich specifically:
 
 - It is **off by default**. Nothing is contacted until you enable it and enter a
   server URL and an API key.
