@@ -1,7 +1,7 @@
 import { App, Notice, Plugin, PluginSettingTab, Setting, normalizePath } from 'obsidian';
 import { DEFAULT_SETTINGS, Settings, SquareDef, normalizeSettings } from './config';
 
-type WlcPlugin = Plugin & {
+type WlcHost = Plugin & {
   /** Edited in place — the object itself is never replaced. */
   readonly settings: Settings;
   saveSettings(): Promise<void>;
@@ -15,15 +15,15 @@ export class WeekLifeCirclesSettingTab extends PluginSettingTab {
   private newColor = '#888888';
   private newKey = '';
 
-  constructor(app: App, private readonly plugin: WlcPlugin) {
-    super(app, plugin);
+  constructor(app: App, private readonly host: WlcHost) {
+    super(app, host);
   }
 
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
-    const s = this.plugin.settings;
-    const save = (): Promise<void> => this.plugin.saveSettings();
+    const s = this.host.settings;
+    const save = (): Promise<void> => this.host.saveSettings();
 
     /** Text setting bound to `key`; `clean` turns the typed text into the stored value. */
     const addText = (name: string, key: TextKey, clean: (v: string) => string, desc = '', placeholder = ''): Setting => {
