@@ -78,18 +78,21 @@ export function flashCell(cell: HTMLElement): void {
 
 const isDecadeStart = (yy: number): boolean => yy % 10 === 1;
 
-interface Shell { root: HTMLElement; stickyTop: HTMLElement; toolbar: HTMLElement; info: HTMLElement }
+interface Shell { root: HTMLElement; stickyHeader: HTMLElement; toolbar: HTMLElement; info: HTMLElement }
 
 /** Empty `el` and build the frame both grids share: sticky toolbar with title + counter. */
 function renderShell(el: HTMLElement, title: string, rootCls: string): Shell {
   el.empty();
-  const root = el.createDiv({ cls: rootCls });
-  const stickyTop = root.createDiv({ cls: 'wcg-sticky-top' });
-  const toolbar = stickyTop.createDiv({ cls: 'wcg-toolbar' });
+  // Toolbar lives OUTSIDE the scroll area so it never scrolls off on a wide
+  // (phone) grid; only the year-label row scrolls+sticks inside `root`.
+  const outer = el.createDiv({ cls: 'wcg-outer' });
+  const toolbar = outer.createDiv({ cls: 'wcg-toolbar' });
   const titleWrap = toolbar.createDiv({ cls: 'wcg-title-wrap' });
   titleWrap.createDiv({ cls: 'wcg-title', text: title });
   const info = titleWrap.createSpan({ cls: 'wcg-cache-info' });
-  return { root, stickyTop, toolbar, info };
+  const root = outer.createDiv({ cls: rootCls });
+  const stickyHeader = root.createDiv({ cls: 'wcg-sticky-header' });
+  return { root, stickyHeader, toolbar, info };
 }
 
 function renderNoBirthDate(el: HTMLElement): void {
@@ -132,8 +135,8 @@ function countCells(cells: CellMap): number {
 }
 
 /** Header row of personal-year labels (the columns of the default week grid and of the day grid). */
-function renderYearHeader(stickyTop: HTMLElement, years: number[], curYY: number | null): void {
-  const header = stickyTop.createDiv({ cls: 'wcg-row wcg-header' });
+function renderYearHeader(stickyHeader: HTMLElement, years: number[], curYY: number | null): void {
+  const header = stickyHeader.createDiv({ cls: 'wcg-row wcg-header' });
   header.createDiv({ cls: 'wcg-ww-label' });
   for (const yy of years) {
     let cls = 'wcg-year-label';
@@ -187,7 +190,7 @@ export async function renderWeekGrid(el: HTMLElement, host: GridHost): Promise<v
   const cal = host.calendar;
   if (cal === null) { renderNoBirthDate(el); return; }
 
-  const { root, stickyTop, toolbar, info } = renderShell(el, 'Life in weeks', 'wcg-view-root');
+  const { root, stickyHeader, toolbar, info } = renderShell(el, 'Life in weeks', 'wcg-view-root');
   const transposed = host.transposed;
   const rotateBtn = iconButton(
     toolbar,
@@ -226,7 +229,7 @@ export async function renderWeekGrid(el: HTMLElement, host: GridHost): Promise<v
 
   if (!transposed) {
     // Default: rows = weeks, columns = years
-    renderYearHeader(stickyTop, years, curYY);
+    renderYearHeader(stickyHeader, years, curYY);
     for (const ww of weeks) {
       const row = wrap.createDiv({ cls: 'wcg-row' + (ww === curWW ? ' wcg-cur-week' : '') });
       row.createDiv({ cls: 'wcg-ww-label', text: pad2(ww) });
@@ -237,7 +240,7 @@ export async function renderWeekGrid(el: HTMLElement, host: GridHost): Promise<v
     }
   } else {
     // Transposed: rows = years, columns = weeks
-    const header = stickyTop.createDiv({ cls: 'wcg-row wcg-header' });
+    const header = stickyHeader.createDiv({ cls: 'wcg-row wcg-header' });
     header.createDiv({ cls: 'wcg-ww-label' });
     for (const ww of weeks) {
       header.createDiv({ cls: 'wcg-year-label' + (ww === curWW ? ' wcg-cur-year' : ''), text: pad2(ww) });
@@ -257,7 +260,7 @@ export async function renderDayGrid(el: HTMLElement, host: GridHost): Promise<vo
   const cal = host.calendar;
   if (cal === null) { renderNoBirthDate(el); return; }
 
-  const { root, stickyTop, toolbar, info } = renderShell(el, 'Life in days', 'wcg-view-root wcg-day-mode');
+  const { root, stickyHeader, toolbar, info } = renderShell(el, 'Life in days', 'wcg-view-root wcg-day-mode');
   const todayBtn = iconButton(toolbar, ICON_TODAY, 'Scroll to today');
   rebuildButton(toolbar, 'Rebuild day cache', () => host.rebuildDayCache(), () => renderDayGrid(el, host));
 
@@ -281,7 +284,7 @@ export async function renderDayGrid(el: HTMLElement, host: GridHost): Promise<vo
     return yy < curYY || (yy === curYY && doy < curDOY);
   };
 
-  renderYearHeader(stickyTop, years, curYY);
+  renderYearHeader(stickyHeader, years, curYY);
   const wrap = root.createDiv({ cls: 'wcg-wrap' });
 
   // 1 row per day-of-personal-year. Label = day number from birthday.
