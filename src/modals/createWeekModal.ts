@@ -45,6 +45,7 @@ export class CreateWeekModal extends Modal {
 
   onOpen(): void {
     const { contentEl } = this;
+    this.modalEl.addClass('wcg-create-modal');
     contentEl.createEl('h2', { text: 'Create week file' });
     this.renderTarget(contentEl);
     renderSquarePicker(this.app, contentEl, 'Week type', this.host.settings.squares, this.square,

@@ -16,10 +16,6 @@
     --wcg-vgap: calc(var(--wcg-pitch) - var(--wcg-cell));          /* row gap = S - D */
     --wcg-hgap: calc(var(--wcg-pitch) * 0.86603 - var(--wcg-cell));/* column gap so column pitch = S·√3/2 */
 }
-/* Phones: smaller circles so far fewer columns run off the right edge. */
-@media (max-width: 600px) {
-    .wcg-view-root { --wcg-cell: 30px; --wcg-pitch: 35px; }
-}
 /* The year/column labels: sticks to the top while scrolling vertically, and
    spans the FULL grid width (max-content) so it covers every column when the
    grid is scrolled sideways — otherwise cells show through on the right. */
@@ -174,11 +170,13 @@
 /* Every other column is shifted down half a circle → staggered (hex) packing.
    Offset lives in a custom prop so hover/scale can compose with it. */
 .wcg-cell.wcg-col-offset { --wcg-shift: calc(var(--wcg-pitch) / 2); }
+@media (hover: hover) {
 .wcg-cell:hover {
     z-index: 5;
     transform: translateY(var(--wcg-shift)) scale(1.16);
     box-shadow: inset 0 0 0 2px var(--interactive-accent),
                 0 6px 14px -5px rgba(0, 0, 0, 0.5);
+}
 }
 .wcg-cell:focus-visible {
     z-index: 5;
@@ -202,7 +200,7 @@
     cursor: pointer;
 }
 .wcg-cell.wcg-future { cursor: pointer; opacity: 0.16; }
-.wcg-cell.wcg-future:hover { opacity: 1; }
+@media (hover: hover) { .wcg-cell.wcg-future:hover { opacity: 1; } }
 .wcg-link {
     display: flex;
     align-items: center;
@@ -282,7 +280,7 @@
     position: fixed;
     bottom: 80px;
     right: 20px;
-    z-index: 9999;
+    z-index: calc(var(--layer-modal, 50) - 1);
     width: 52px;
     height: 52px;
     border-radius: 50%;
@@ -402,7 +400,7 @@ body .wcg-sq-img img {
     border: 1px solid var(--background-modifier-border);
     border-radius: 6px;
     padding: 8px;
-    max-height: 230px;
+    max-height: min(50vh, 420px);
     overflow-y: auto;
 }
 .wcg-immich-note {
@@ -474,3 +472,9 @@ body .wcg-sq-img img {
     text-align: center;
     line-height: 72px;
 }
+
+body:has(.modal-container) .wcg-fab { display: none; }
+/* Obsidian's phone modal is a fixed-height sheet: without this every section
+   (and above all the scrollable Immich box) gets squeezed to fit. */
+.wcg-create-modal .modal-content { overflow-y: auto; }
+.wcg-create-modal .modal-content > * { flex-shrink: 0; }
