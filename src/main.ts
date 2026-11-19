@@ -3,7 +3,7 @@ import type { WorkspaceLeaf } from 'obsidian';
 import { CellMap, Settings, DEFAULT_SETTINGS, normalizeSettings, parseBirthDate } from './config';
 import { migrate, SavedData } from './migrate';
 import { Calendar, WEEKS_PER_YEAR } from './calendar';
-import { buildSquareCSS } from './squares';
+import { decorateSquares } from './squares';
 import { parseWeekFilename, readWeekData, weekNotePath } from './weekFiles';
 import { parseDayFilename, readDayData } from './dayFiles';
 import { DAY_VIEW_TYPE, DayCalendarView, GridView, WEEK_VIEW_TYPE, WeekCalendarView } from './views/gridViews';
@@ -55,7 +55,7 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
   transposed = false;
   immich!: ImmichClient;
 
-  private squareStyle: HTMLStyleElement | null = null;
+  private squareObserver: MutationObserver | null = null;
   private fab: HTMLElement | null = null;
   private readonly debounce = new Debouncer();
   private readonly modified: Record<Kind, Set<string>> = { week: new Set(), day: new Set() };
@@ -80,9 +80,8 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
     this.rebuildCalendar();
     this.cacheInputs = this.currentCacheInputs();
 
-    // Square colours are user-defined, so their rules cannot live in styles.css.
-    this.squareStyle = document.head.createEl('style');
-    this.squareStyle.textContent = buildSquareCSS(this.settings.squares);
+    // Square colours are user-defined: set per element (not via an injected stylesheet).
+    this.startSquareDecoration();
 
     this.registerView(WEEK_VIEW_TYPE, leaf => new WeekCalendarView(leaf, this));
     this.registerView(DAY_VIEW_TYPE, leaf => new DayCalendarView(leaf, this));
@@ -91,7 +90,7 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
     this.addRibbonIcon('calendar', 'Day calendar', () => { void this.activateDayView(); });
 
     if (Platform.isMobile) {
-      this.fab = document.body.createEl('button', {
+      this.fab = activeDocument.body.createEl('button', {
         cls: 'wcg-fab',
         attr: { 'aria-label': 'Week Life Circles' },
       });
@@ -119,6 +118,7 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
     // Clicking a colour square in reading view jumps to the grid cell
     this.registerMarkdownPostProcessor((el, ctx) => {
       const target = parseWeekFilename(ctx.sourcePath.split('/').pop() ?? '');
+      decorateSquares(el, this.settings.squares);
       el.querySelectorAll('span.sq').forEach(span =>
         span.addEventListener('click', e => {
           e.preventDefault(); e.stopPropagation();
@@ -127,10 +127,10 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
     });
 
     // PNG squares are embedded images resolved async — use a global listener instead
-    this.registerDomEvent(document, 'click', (e: MouseEvent) => {
+    this.registerDomEvent(activeDocument, 'click', (e: MouseEvent) => {
       const t = e.target as HTMLElement | null;
       // the image itself, or the embed wrapper around it — not any container that has one inside
-      const img = t instanceof HTMLImageElement ? t : t?.matches?.('.internal-embed') ? t.querySelector('img') : null;
+      const img = t?.instanceOf(HTMLImageElement) ? t : t?.matches?.('.internal-embed') ? t.querySelector('img') : null;
       if (!img) return;
       const name = (img.getAttribute('alt') || '').trim();
       if (!this.settings.squares.some(s => s.key === name && !s.color)) return;
@@ -175,11 +175,28 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
 
   onunload(): void {
     this.unloaded = true;
-    this.squareStyle?.remove();
-    this.squareStyle = null;
+    this.squareObserver?.disconnect();
+    this.squareObserver = null;
     this.fab?.remove();
     this.fab = null;
     this.debounce.cancelAll();
+  }
+
+  /** Decorate squares in the open document and in anything rendered later (live preview, embeds). */
+  private startSquareDecoration(): void {
+    this.refreshSquares();
+    this.squareObserver = new MutationObserver(records => {
+      for (const r of records) {
+        r.addedNodes.forEach(n => {
+          if (n.nodeType === Node.ELEMENT_NODE) decorateSquares(n as HTMLElement, this.settings.squares);
+        });
+      }
+    });
+    this.squareObserver.observe(activeDocument.body, { childList: true, subtree: true });
+  }
+
+  private refreshSquares(): void {
+    decorateSquares(activeDocument.body, this.settings.squares);
   }
 
   // ── Persistence / settings ──────────────────────────────────────────────
@@ -204,14 +221,14 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
     this.dayCells = data.dayCells ?? {};
     this.dayBuiltAt = data.dayBuiltAt ?? 0;
     this.rebuildCalendar();
-    if (this.squareStyle) this.squareStyle.textContent = buildSquareCSS(this.settings.squares);
+    this.refreshSquares();
     this.debounce.run('apply-settings', 400, () => { void this.applySettings(); });
   }
 
   /** Called by the setting tab after it edited `settings` in place. */
   async saveSettings(): Promise<void> {
     this.rebuildCalendar();
-    if (this.squareStyle) this.squareStyle.textContent = buildSquareCSS(this.settings.squares);
+    this.refreshSquares();
     await this.persist();
     // Settings are saved per keystroke; the expensive follow-up waits for a pause.
     this.debounce.run('apply-settings', 400, () => { void this.applySettings(); });

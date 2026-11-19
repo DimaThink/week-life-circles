@@ -83,18 +83,18 @@ interface Shell { root: HTMLElement; stickyTop: HTMLElement; toolbar: HTMLElemen
 /** Empty `el` and build the frame both grids share: sticky toolbar with title + counter. */
 function renderShell(el: HTMLElement, title: string, rootCls: string): Shell {
   el.empty();
-  const root = el.createEl('div', { cls: rootCls });
-  const stickyTop = root.createEl('div', { cls: 'wcg-sticky-top' });
-  const toolbar = stickyTop.createEl('div', { cls: 'wcg-toolbar' });
-  const titleWrap = toolbar.createEl('div', { cls: 'wcg-title-wrap' });
-  titleWrap.createEl('div', { cls: 'wcg-title', text: title });
-  const info = titleWrap.createEl('span', { cls: 'wcg-cache-info' });
+  const root = el.createDiv({ cls: rootCls });
+  const stickyTop = root.createDiv({ cls: 'wcg-sticky-top' });
+  const toolbar = stickyTop.createDiv({ cls: 'wcg-toolbar' });
+  const titleWrap = toolbar.createDiv({ cls: 'wcg-title-wrap' });
+  titleWrap.createDiv({ cls: 'wcg-title', text: title });
+  const info = titleWrap.createSpan({ cls: 'wcg-cache-info' });
   return { root, stickyTop, toolbar, info };
 }
 
 function renderNoBirthDate(el: HTMLElement): void {
   el.empty();
-  el.createEl('div', {
+  el.createDiv({
     cls: 'wcg-status',
     text: 'Set your birth date in the plugin settings to see your calendar.',
   });
@@ -116,7 +116,7 @@ async function ensureCells(
   root: HTMLElement, statusText: string, cells: CellMap, builtAt: number, rebuild: () => Promise<CellMap>,
 ): Promise<CellMap> {
   if (builtAt !== 0) return cells;
-  const st = root.createEl('div', { cls: 'wcg-status', text: statusText });
+  const st = root.createDiv({ cls: 'wcg-status', text: statusText });
   try {
     return await rebuild();
   } catch (e) {
@@ -133,13 +133,13 @@ function countCells(cells: CellMap): number {
 
 /** Header row of personal-year labels (the columns of the default week grid and of the day grid). */
 function renderYearHeader(stickyTop: HTMLElement, years: number[], curYY: number | null): void {
-  const header = stickyTop.createEl('div', { cls: 'wcg-row wcg-header' });
-  header.createEl('div', { cls: 'wcg-ww-label' });
+  const header = stickyTop.createDiv({ cls: 'wcg-row wcg-header' });
+  header.createDiv({ cls: 'wcg-ww-label' });
   for (const yy of years) {
     let cls = 'wcg-year-label';
     if (yy === curYY) cls += ' wcg-cur-year';
     if (isDecadeStart(yy)) cls += ' wcg-decade-start';
-    header.createEl('div', { cls, text: String(yy) });
+    header.createDiv({ cls, text: String(yy) });
   }
 }
 
@@ -209,12 +209,12 @@ export async function renderWeekGrid(el: HTMLElement, host: GridHost): Promise<v
   // isPast: year < current, or same year and week <= current
   const isPast = (yy: number, ww: number): boolean => yy < curYY || (yy === curYY && ww <= curWW);
 
-  const wrap = root.createEl('div', { cls: 'wcg-wrap' });
+  const wrap = root.createDiv({ cls: 'wcg-wrap' });
 
   const makeCell = (parent: HTMLElement, yy: number, ww: number, colIndex: number): HTMLElement => {
     const d = cells[String(yy)]?.[String(ww)];
     const cls = cellClass(colIndex % 2 === 1, yy === curYY && ww === curWW, !!d, isPast(yy, ww));
-    const cell = parent.createEl('div', { cls, attr: { 'data-yy': String(yy), 'data-ww': String(ww) } });
+    const cell = parent.createDiv({ cls, attr: { 'data-yy': String(yy), 'data-ww': String(ww) } });
     if (d) {
       fillLink(cell, d);
     } else {
@@ -228,8 +228,8 @@ export async function renderWeekGrid(el: HTMLElement, host: GridHost): Promise<v
     // Default: rows = weeks, columns = years
     renderYearHeader(stickyTop, years, curYY);
     for (const ww of weeks) {
-      const row = wrap.createEl('div', { cls: 'wcg-row' + (ww === curWW ? ' wcg-cur-week' : '') });
-      row.createEl('div', { cls: 'wcg-ww-label', text: pad2(ww) });
+      const row = wrap.createDiv({ cls: 'wcg-row' + (ww === curWW ? ' wcg-cur-week' : '') });
+      row.createDiv({ cls: 'wcg-ww-label', text: pad2(ww) });
       for (const yy of years) {
         const cell = makeCell(row, yy, ww, yy - startAge);
         if (isDecadeStart(yy)) cell.addClass('wcg-decade-start');
@@ -237,17 +237,17 @@ export async function renderWeekGrid(el: HTMLElement, host: GridHost): Promise<v
     }
   } else {
     // Transposed: rows = years, columns = weeks
-    const header = stickyTop.createEl('div', { cls: 'wcg-row wcg-header' });
-    header.createEl('div', { cls: 'wcg-ww-label' });
+    const header = stickyTop.createDiv({ cls: 'wcg-row wcg-header' });
+    header.createDiv({ cls: 'wcg-ww-label' });
     for (const ww of weeks) {
-      header.createEl('div', { cls: 'wcg-year-label' + (ww === curWW ? ' wcg-cur-year' : ''), text: pad2(ww) });
+      header.createDiv({ cls: 'wcg-year-label' + (ww === curWW ? ' wcg-cur-year' : ''), text: pad2(ww) });
     }
     for (const yy of years) {
       let rowCls = 'wcg-row';
       if (yy === curYY) rowCls += ' wcg-cur-week';
       if (isDecadeStart(yy)) rowCls += ' wcg-decade-top';
-      const row = wrap.createEl('div', { cls: rowCls });
-      row.createEl('div', { cls: 'wcg-ww-label' + (yy === curYY ? ' wcg-cur-year-lbl' : ''), text: String(yy) });
+      const row = wrap.createDiv({ cls: rowCls });
+      row.createDiv({ cls: 'wcg-ww-label' + (yy === curYY ? ' wcg-cur-year-lbl' : ''), text: String(yy) });
       for (const ww of weeks) makeCell(row, yy, ww, ww - 1);
     }
   }
@@ -282,23 +282,23 @@ export async function renderDayGrid(el: HTMLElement, host: GridHost): Promise<vo
   };
 
   renderYearHeader(stickyTop, years, curYY);
-  const wrap = root.createEl('div', { cls: 'wcg-wrap' });
+  const wrap = root.createDiv({ cls: 'wcg-wrap' });
 
   // 1 row per day-of-personal-year. Label = day number from birthday.
   for (let doy = 1; doy <= 366; doy++) {
-    const row = wrap.createEl('div', { cls: 'wcg-row' + (doy === curDOY ? ' wcg-cur-week' : '') });
-    row.createEl('div', { cls: 'wcg-ww-label', text: String(doy) });
+    const row = wrap.createDiv({ cls: 'wcg-row' + (doy === curDOY ? ' wcg-cur-week' : '') });
+    row.createDiv({ cls: 'wcg-ww-label', text: String(doy) });
 
     for (const yy of years) {
       const colOff = (yy - startYY) % 2 === 1;
       let cell: HTMLElement;
       if (doy > (yearLen.get(yy) ?? 0)) {
         // Beyond the personal year's length (doy=366 in a 365-day year) → invisible placeholder
-        cell = row.createEl('div', { cls: 'wcg-cell wcg-cell-empty' + (colOff ? ' wcg-col-offset' : '') });
+        cell = row.createDiv({ cls: 'wcg-cell wcg-cell-empty' + (colOff ? ' wcg-col-offset' : '') });
       } else {
         const d = cells[String(yy)]?.[String(doy)];
         const cls = cellClass(colOff, yy === curYY && doy === curDOY, !!d, isPast(yy, doy));
-        cell = row.createEl('div', { cls, attr: { 'data-yy': String(yy), 'data-doy': String(doy) } });
+        cell = row.createDiv({ cls, attr: { 'data-yy': String(yy), 'data-doy': String(doy) } });
         if (d) {
           fillLink(cell, d);
         } else {
@@ -321,7 +321,7 @@ export async function renderDayGrid(el: HTMLElement, host: GridHost): Promise<vo
   });
 
   // Wait two frames so the grid has actually laid out before we scroll
-  requestAnimationFrame(() => requestAnimationFrame(() => {
+  window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
     todayCell()?.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'center' });
   }));
 }

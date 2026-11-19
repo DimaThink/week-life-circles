@@ -84,7 +84,7 @@ export class CreateDayModal extends Modal {
       await workspace.getLeaf('tab').openFile(file);
     } catch (e) {
       console.error('week-life-circles: CreateDayModal.create failed', e);
-      new Notice(`❌ ${(e as Error).message || e}`, 8000);
+      new Notice(`❌ ${(e instanceof Error && e.message) || String(e)}`, 8000);
     }
   }
 

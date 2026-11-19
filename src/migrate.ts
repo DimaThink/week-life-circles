@@ -8,8 +8,6 @@ export interface SavedData {
   dayBuiltAt: number;
 }
 
-const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v));
-
 function mergeSquares(custom: unknown): SquareDef[] {
   const out: SquareDef[] = DEFAULT_SQUARES.map(q => ({ ...q }));
   if (!Array.isArray(custom)) return out;

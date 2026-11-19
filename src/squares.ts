@@ -5,13 +5,31 @@ export function squareClass(key: string): string {
   return 'sq-' + key.replace(/\.[^.]+$/, '');
 }
 
-/** CSS injected for inline square spans/images in week files. */
-export function buildSquareCSS(squares: SquareDef[]): string {
-  return `.sq{display:inline-block;width:18px;height:18px;border-radius:4px;vertical-align:middle;margin:0 1px;cursor:pointer}\n` +
-    squares.filter(t => t.color).map(t => `.${squareClass(t.key)}{background:${t.color}}`).join('\n') + '\n' +
-    squares.filter(t => !t.color).map(t =>
-      `img[alt="${t.key}"]{width:18px!important;height:18px!important;display:inline-block!important;vertical-align:middle!important;border-radius:4px!important;cursor:pointer!important}`
-    ).join('\n');
+/** Marker class for image squares embedded in a note (styled in styles.css). */
+export const SQ_IMG_CLASS = 'wcg-sq-img';
+
+/**
+ * Square colours are user-defined, so they are applied per element (a CSS custom property
+ * read by the static `.sq` rule in styles.css) rather than through an injected stylesheet.
+ * Idempotent; safe to call on any subtree.
+ */
+export function decorateSquares(root: ParentNode, squares: SquareDef[]): void {
+  const colors = new Map(squares.filter(t => t.color).map(t => [squareClass(t.key), t.color as string]));
+  const images = new Set(squares.filter(t => !t.color).map(t => t.key));
+  const all = (sel: string): HTMLElement[] => [
+    ...(typeof (root as HTMLElement).matches === 'function' && (root as HTMLElement).matches(sel) ? [root as HTMLElement] : []),
+    ...Array.from(root.querySelectorAll<HTMLElement>(sel)),
+  ];
+  all('span.sq').forEach(span => {
+    for (const [cls, color] of colors) {
+      if (span.classList.contains(cls)) { span.setCssProps({ '--wcg-sq-color': color }); return; }
+    }
+    span.style.removeProperty('--wcg-sq-color');
+  });
+  if (images.size === 0) return;
+  all('img[alt], .internal-embed[alt]').forEach(el => {
+    if (images.has((el.getAttribute('alt') ?? '').trim())) el.classList.add(SQ_IMG_CLASS);
+  });
 }
 
 /** {key: color} for colour squares only. */

@@ -28,7 +28,7 @@ export class WeekLifeCirclesSettingTab extends PluginSettingTab {
     /** Text setting bound to `key`; `clean` turns the typed text into the stored value. */
     const addText = (name: string, key: TextKey, clean: (v: string) => string, desc = '', placeholder = ''): Setting => {
       const setting = new Setting(containerEl).setName(name).addText(t =>
-        t.setPlaceholder(placeholder).setValue(s[key]).onChange(async v => { s[key] = clean(v); await save(); }));
+        t.setPlaceholder(placeholder).setValue(s[key]).onChange(v => { s[key] = clean(v); void save(); }));
       if (desc) setting.setDesc(desc);
       return setting;
     };
@@ -41,14 +41,16 @@ export class WeekLifeCirclesSettingTab extends PluginSettingTab {
       new Setting(containerEl).setName(name).addText(t => {
         t.inputEl.type = 'number';
         t.setValue(String(s[key]));
-        t.inputEl.addEventListener('change', async () => {
-          const n = Number(t.inputEl.value);
-          if (Number.isFinite(n) && t.inputEl.value !== '') {
-            s[key] = n;
-            Object.assign(s, normalizeSettings(s)); // whole ages, endAge > startAge
-            await save();
-          }
-          this.display();
+        t.inputEl.addEventListener('change', () => {
+          void (async () => {
+            const n = Number(t.inputEl.value);
+            if (Number.isFinite(n) && t.inputEl.value !== '') {
+              s[key] = n;
+              Object.assign(s, normalizeSettings(s)); // whole ages, endAge > startAge
+              await save();
+            }
+            this.display();
+          })();
         });
       });
     };

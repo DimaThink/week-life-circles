@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { squareClass, buildSquareCSS, colorMap } from '../src/squares';
+import { squareClass, decorateSquares, SQ_IMG_CLASS, colorMap } from '../src/squares';
 import type { SquareDef } from '../src/config';
 
 const sample: SquareDef[] = [
@@ -14,14 +14,38 @@ describe('squareClass', () => {
   });
 });
 
-describe('buildSquareCSS', () => {
-  const css = buildSquareCSS(sample);
-  it('has the base rule', () => expect(css).toContain('.sq{display:inline-block;'));
-  it('emits colour rules', () => expect(css).toContain('.sq-work{background:#4A4A4A}'));
-  it('emits image rules only for image squares', () => {
-    expect(css).toContain('img[alt="sample.png"]{');
-    expect(css).not.toContain('img[alt="work.png"]');
-    expect(css).not.toContain('.sq-sample');
+class FakeEl {
+  classes: Set<string>;
+  props: Record<string, string> = {};
+  constructor(cls: string[], private readonly attrs: Record<string, string> = {}) { this.classes = new Set(cls); }
+  classList = { contains: (c: string) => this.classes.has(c), add: (c: string) => { this.classes.add(c); } };
+  style = { removeProperty: (k: string) => { delete this.props[k]; } };
+  setCssProps(p: Record<string, string>) { Object.assign(this.props, p); }
+  getAttribute(k: string) { return this.attrs[k] ?? null; }
+}
+
+describe('decorateSquares', () => {
+  const root = (spans: FakeEl[], imgs: FakeEl[]) => ({
+    querySelectorAll: (sel: string) => (sel === 'span.sq' ? spans : imgs),
+  }) as unknown as ParentNode;
+
+  it('sets the colour as a custom property on colour spans', () => {
+    const span = new FakeEl(['sq', 'sq-work']);
+    decorateSquares(root([span], []), sample);
+    expect(span.props['--wcg-sq-color']).toBe('#4A4A4A');
+  });
+  it('marks image squares only, by alt text', () => {
+    const img = new FakeEl([], { alt: 'sample.png' });
+    const other = new FakeEl([], { alt: 'work.png' });
+    decorateSquares(root([], [img, other]), sample);
+    expect(img.classes.has(SQ_IMG_CLASS)).toBe(true);
+    expect(other.classes.has(SQ_IMG_CLASS)).toBe(false);
+  });
+  it('clears the colour of an unknown square', () => {
+    const span = new FakeEl(['sq', 'sq-gone']);
+    span.props['--wcg-sq-color'] = '#fff';
+    decorateSquares(root([span], []), sample);
+    expect(span.props['--wcg-sq-color']).toBeUndefined();
   });
 });
 

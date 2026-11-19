@@ -22,8 +22,6 @@ single days.
 
 <img src="docs/screenshots/week-link.png" alt="A week circle showing the note it links to">
 
-<!-- TODO: add docs/screenshots/day-grid.png and settings.png -->
-
 
 ## How it counts
 

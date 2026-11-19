@@ -69,14 +69,14 @@ export class CreateWeekModal extends Modal {
   }
 
   private renderPhotoUpload(contentEl: HTMLElement): void {
-    contentEl.createEl('div', { text: 'Week photo (optional)', cls: 'wcg-section-label' });
-    const dropZone = contentEl.createEl('div', { cls: 'wcg-drop-zone' });
-    const dropLabel = dropZone.createEl('div', { text: DROP_HINT, cls: 'wcg-drop-label' });
+    contentEl.createDiv({ text: 'Week photo (optional)', cls: 'wcg-section-label' });
+    const dropZone = contentEl.createDiv({ cls: 'wcg-drop-zone' });
+    const dropLabel = dropZone.createDiv({ text: DROP_HINT, cls: 'wcg-drop-label' });
     const photoInput = dropZone.createEl('input', {
       cls: 'wcg-file-input',
       attr: { type: 'file', accept: '.jpg,.jpeg,.png,.webp,.mp4,.mov,.avi,.webm,.mkv', multiple: 'true' },
     });
-    const fileList = contentEl.createEl('div', { cls: 'wcg-file-list' });
+    const fileList = contentEl.createDiv({ cls: 'wcg-file-list' });
 
     const updateZone = (): void => {
       const n = this.photoFiles.length;
@@ -93,12 +93,12 @@ export class CreateWeekModal extends Modal {
         const icon = PHOTO_IMAGE_EXTS.has(f.ext) ? '📷' : '🎬';
         const name = photoFileName(wDisp, yDisp, i, f.ext);
         const kb = (f.size / 1024).toFixed(0);
-        const row = fileList.createEl('div', { cls: 'wcg-file-row' });
-        row.createEl('span', { text: `${icon} Attachments/${yDisp}/${name}  (${kb} KB)`, cls: 'wcg-file-name' });
-        const rm = row.createEl('span', { text: '✕', cls: 'wcg-file-remove' });
+        const row = fileList.createDiv({ cls: 'wcg-file-row' });
+        row.createSpan({ text: `${icon} Attachments/${yDisp}/${name}  (${kb} KB)`, cls: 'wcg-file-name' });
+        const rm = row.createSpan({ text: '✕', cls: 'wcg-file-remove' });
         rm.addEventListener('click', e => { e.stopPropagation(); this.photoFiles.splice(i, 1); renderFileList(); updateZone(); });
       });
-      const clear = fileList.createEl('div', { text: 'Clear all', cls: 'wcg-file-clear' });
+      const clear = fileList.createDiv({ text: 'Clear all', cls: 'wcg-file-clear' });
       clear.addEventListener('click', e => { e.stopPropagation(); this.photoFiles = []; renderFileList(); updateZone(); });
     };
 
@@ -123,8 +123,8 @@ export class CreateWeekModal extends Modal {
   // ── Immich picker (only rendered when host.immich.available && calendar) ──
 
   private renderImmichPicker(contentEl: HTMLElement): void {
-    this.immichHeader = contentEl.createEl('div', { text: 'From Immich', cls: 'wcg-section-label' });
-    this.immichBox = contentEl.createEl('div', { cls: 'wcg-immich-box' });
+    this.immichHeader = contentEl.createDiv({ text: 'From Immich', cls: 'wcg-section-label' });
+    this.immichBox = contentEl.createDiv({ cls: 'wcg-immich-box' });
     this.reloadImmich();
   }
 
@@ -147,7 +147,7 @@ export class CreateWeekModal extends Modal {
     this.revokeImmichUrls();
     this.immichSelected.clear();
     header.textContent = 'From Immich';
-    const note = box.createEl('div', { text: 'Loading photos…', cls: 'wcg-immich-note' });
+    const note = box.createDiv({ text: 'Loading photos…', cls: 'wcg-immich-note' });
     const ww = parseInt(this.ww, 10), yy = parseInt(this.yy, 10);
     if (Number.isNaN(ww) || Number.isNaN(yy) || ww < 1 || ww > WEEKS_PER_YEAR) {
       note.textContent = 'Enter week + year to load that week’s photos';
@@ -184,23 +184,23 @@ export class CreateWeekModal extends Modal {
     };
     updateHeader();
 
-    const grid = box.createEl('div', { cls: 'wcg-immich-grid' });
+    const grid = box.createDiv({ cls: 'wcg-immich-grid' });
     for (const a of items) this.makeImmichTile(grid, a, updateHeader, token);
     if (total > items.length) {
-      box.createEl('div', { text: `Showing first ${items.length} of ${total}`, cls: 'wcg-immich-more' });
+      box.createDiv({ text: `Showing first ${items.length} of ${total}`, cls: 'wcg-immich-more' });
     }
   }
 
   private makeImmichTile(grid: HTMLElement, asset: ImmichAsset, updateHeader: () => void, token: number): void {
-    const tile = grid.createEl('div', { cls: 'wcg-immich-tile', attr: { title: asset.originalFileName || '' } });
+    const tile = grid.createDiv({ cls: 'wcg-immich-tile', attr: { title: asset.originalFileName || '' } });
     let dead = false;
     if (asset.type === 'VIDEO') {
       // duration is milliseconds in /api/search/metadata responses
       const s = Math.round((Number(asset.duration) || 0) / 1000);
       const dur = `${Math.floor(s / 60)}:${pad2(s % 60)}`;
-      tile.createEl('div', { text: `🎬 ${dur}`, cls: 'wcg-immich-badge' });
+      tile.createDiv({ text: `🎬 ${dur}`, cls: 'wcg-immich-badge' });
     }
-    tile.createEl('div', { text: '✓', cls: 'wcg-immich-check' });
+    tile.createDiv({ text: '✓', cls: 'wcg-immich-check' });
     this.host.immich.thumbnail(asset.id)
       .then(buf => {
         if (token !== this.immichToken) return;
@@ -211,7 +211,7 @@ export class CreateWeekModal extends Modal {
       .catch(() => {
         dead = true;
         tile.addClass('is-dead');
-        tile.createEl('div', { text: '✕', cls: 'wcg-immich-dead' });
+        tile.createDiv({ text: '✕', cls: 'wcg-immich-dead' });
       });
     tile.addEventListener('click', () => {
       if (dead) return;

@@ -130,9 +130,9 @@ function normalizeSquares(v: unknown): SquareDef[] {
 export function normalizeSettings(s: Partial<Settings> | null | undefined): Settings {
   const d = DEFAULT_SETTINGS;
   const src = (s ?? {}) as Record<string, unknown>;
-  const str = (k: keyof Settings): string => (typeof src[k] === 'string' ? (src[k] as string) : (d[k] as string));
+  const str = (k: keyof Settings): string => (typeof src[k] === 'string' ? (src[k]) : (d[k] as string));
   const num = (k: keyof Settings): number =>
-    typeof src[k] === 'number' && Number.isFinite(src[k]) ? Math.floor(src[k] as number) : (d[k] as number);
+    typeof src[k] === 'number' && Number.isFinite(src[k]) ? Math.floor(src[k]) : (d[k] as number);
   const startAge = Math.min(Math.max(num('startAge'), 0), MAX_AGE - 1);
   const pageSize = num('immichPageSize');
   return {

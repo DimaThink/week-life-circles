@@ -192,7 +192,7 @@
     width: 100%;
     height: 100%;
     cursor: pointer;
-    text-decoration: none !important;
+    text-decoration: none;
     border-radius: 50%;
     overflow: hidden;
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-normal) 14%, transparent);
@@ -286,8 +286,8 @@
     .wcg-cell.wcg-cur-cell,
     .wcg-flash,
     .wcg-icon-btn.wcg-spin svg {
-        animation: none !important;
-        transition: none !important;
+        animation: none;
+        transition: none;
     }
 }
 /* ── Day-mode overrides ───────────────────────────────────────────────────────
@@ -296,6 +296,29 @@
 .wcg-day-mode .wcg-cell-empty {
     visibility: hidden;
     pointer-events: none;
+}
+/* Link text-decoration must beat Obsidian's `a:hover` underline without !important */
+.wcg-cell .wcg-link,
+.wcg-cell .wcg-link:hover { text-decoration: none; }
+/* ── Inline squares inside notes (colour set per element from code via --wcg-sq-color) ── */
+.sq {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    vertical-align: middle;
+    margin: 0 1px;
+    cursor: pointer;
+    background: var(--wcg-sq-color, transparent);
+}
+body img.wcg-sq-img,
+body .wcg-sq-img img {
+    width: 18px;
+    height: 18px;
+    display: inline-block;
+    vertical-align: middle;
+    border-radius: 4px;
+    cursor: pointer;
 }
 /* ── Colours set from code via the --wcg-color custom property ─────────────── */
 .wcg-link,

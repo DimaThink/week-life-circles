@@ -15,12 +15,12 @@ export function renderSquarePicker(
   initial: string,
   onPick: (key: string) => void,
 ): void {
-  parent.createEl('div', { text: label, cls: 'setting-item-name wcg-field-label' });
-  const grid = parent.createEl('div', { cls: 'wcg-swatch-grid' });
+  parent.createDiv({ text: label, cls: 'setting-item-name wcg-field-label' });
+  const grid = parent.createDiv({ cls: 'wcg-swatch-grid' });
   let selected: HTMLElement | null = null;
   for (const type of squares) {
-    const swatch = grid.createEl('div', { cls: 'wcg-swatch', attr: { title: type.name } });
-    const dot = swatch.createEl('div', { cls: 'wcg-swatch-dot' });
+    const swatch = grid.createDiv({ cls: 'wcg-swatch', attr: { title: type.name } });
+    const dot = swatch.createDiv({ cls: 'wcg-swatch-dot' });
     if (type.color) {
       dot.setCssProps({ '--wcg-color': type.color });
     } else {
@@ -28,7 +28,7 @@ export function renderSquarePicker(
       if (f) dot.createEl('img', { attr: { src: app.vault.getResourcePath(f) } });
       else dot.addClass('wcg-swatch-missing');
     }
-    swatch.createEl('div', { cls: 'wcg-swatch-label', text: type.name });
+    swatch.createDiv({ cls: 'wcg-swatch-label', text: type.name });
     const select = (): void => {
       selected?.removeClass('wcg-swatch-selected');
       selected = swatch;
