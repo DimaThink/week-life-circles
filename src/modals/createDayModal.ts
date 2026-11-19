@@ -1,0 +1,92 @@
+import { App, Modal, Notice, Setting, TFile, moment } from 'obsidian';
+import type { Settings } from '../config';
+import { Calendar, formatYMD, pad2, weekOfDoy } from '../calendar';
+import type { ImmichClient } from '../immich';
+import { renderDayTemplate } from '../templates';
+import { ensureFolder } from '../vaultUtil';
+import { defaultSquareKey, renderSquarePicker } from './swatches';
+
+export interface ModalHost {
+  readonly app: App;
+  readonly settings: Settings;
+  calendar: Calendar | null;
+  immich: ImmichClient;
+}
+
+export class CreateDayModal extends Modal {
+  private square: string;
+  private date: Date | null;
+  private dateStr = '';
+  private weekdayName = '';
+
+  constructor(private readonly host: ModalHost, private readonly target: { yy: number; doy: number }) {
+    super(host.app);
+    this.square = defaultSquareKey(host.settings);
+    this.date = host.calendar ? host.calendar.personalToDate(target.yy, target.doy) : null;
+    if (this.date) {
+      this.dateStr = formatYMD(this.date);
+      this.weekdayName = moment(this.date).format('dddd'); // in Obsidian's language
+    }
+  }
+
+  onOpen(): void {
+    const { contentEl } = this;
+    contentEl.createEl('h2', { text: 'Create day file' });
+    if (!this.date) {
+      contentEl.createEl('p', { text: 'Calendar is not configured.', cls: 'setting-item-description' });
+      return;
+    }
+    contentEl.createEl('p', { text: `${this.dateStr} · ${this.weekdayName}`, cls: 'setting-item-description' });
+    renderSquarePicker(this.app, contentEl, 'Day type', this.host.settings.squares, this.square,
+      k => { this.square = k; });
+    new Setting(contentEl)
+      .addButton(btn => btn.setButtonText('Create').setCta().onClick(() => { void this.create(); }));
+  }
+
+  private async renderBody(date: Date): Promise<string> {
+    const { vault } = this.host.app;
+    const path = this.host.settings.dayTemplatePath;
+    let templateRaw: string | null = null;
+    if (path) {
+      const tpl = vault.getAbstractFileByPath(path);
+      if (tpl instanceof TFile) templateRaw = await vault.read(tpl);
+    }
+    const yest = new Date(date.getFullYear(), date.getMonth(), date.getDate() - 1);
+    return renderDayTemplate({
+      templateRaw,
+      dateStr: this.dateStr,
+      weekdayName: this.weekdayName,
+      yesterdayStr: formatYMD(yest),
+      square: this.square,
+      settings: this.host.settings,
+    });
+  }
+
+  private async create(): Promise<void> {
+    if (!this.date) return;
+    try {
+      const { vault, workspace } = this.host.app;
+      const dayFolder = this.host.settings.dayFolder;
+      const folder = `${dayFolder}/${pad2(weekOfDoy(this.target.doy))}.${pad2(this.target.yy)}`;
+      const filePath = `${folder}/${this.dateStr}.md`;
+
+      if (vault.getAbstractFileByPath(filePath)) {
+        new Notice(`Already exists: ${filePath}`);
+        return;
+      }
+      const body = await this.renderBody(this.date);
+      await ensureFolder(vault, dayFolder);
+      await ensureFolder(vault, folder);
+      const file = await vault.create(filePath, body);
+      this.close();
+      new Notice(`✅ Created ${this.dateStr}.md`);
+      // New tab so the day calendar stays visible behind it
+      await workspace.getLeaf('tab').openFile(file);
+    } catch (e) {
+      console.error('week-life-circles: CreateDayModal.create failed', e);
+      new Notice(`❌ ${(e as Error).message || e}`, 8000);
+    }
+  }
+
+  onClose(): void { this.contentEl.empty(); }
+}

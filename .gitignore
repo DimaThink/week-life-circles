@@ -1,0 +1,6 @@
+node_modules/
+data.json
+immich.key
+main.js
+.superpowers/
+docs/superpowers/

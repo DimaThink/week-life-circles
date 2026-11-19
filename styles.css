@@ -1,0 +1,435 @@
+.wcg-view-root {
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    padding: 0 16px 40px;
+    box-sizing: border-box;
+    --wcg-cell: 42px;                                              /* circle diameter (D) */
+    --wcg-pitch: 49px;                                             /* equal centre-to-centre distance to all 6 neighbours (S) */
+    --wcg-vgap: calc(var(--wcg-pitch) - var(--wcg-cell));          /* row gap = S - D */
+    --wcg-hgap: calc(var(--wcg-pitch) * 0.86603 - var(--wcg-cell));/* column gap so column pitch = S·√3/2 */
+}
+.wcg-sticky-top {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--background-primary);
+    padding-top: 14px;
+    border-bottom: 1px solid var(--background-modifier-border);
+    box-shadow: 0 10px 18px -16px rgba(0, 0, 0, 0.55);
+}
+.wcg-wrap {
+    display: inline-flex;
+    flex-direction: column;
+    gap: var(--wcg-vgap);
+    min-width: 100%;
+    animation: wcg-enter 0.45s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+@keyframes wcg-enter {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: none; }
+}
+.wcg-row {
+    display: flex;
+    align-items: center;
+    gap: var(--wcg-hgap);
+    height: var(--wcg-cell);
+    contain: layout style;
+    /* Row is just a layout track; only the circles below are interactive,
+       so an offset circle overflowing into the next row stays clickable. */
+    pointer-events: none;
+}
+.wcg-header {
+    height: 48px;
+    align-items: flex-end;
+    padding-bottom: 4px;
+}
+.wcg-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 2px 10px;
+}
+.wcg-title-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    margin-right: auto;
+}
+.wcg-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-normal);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+.wcg-cache-info {
+    font-size: 11px;
+    color: var(--text-faint);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+}
+.wcg-icon-btn {
+    width: 30px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border-radius: 7px;
+    border: 1px solid var(--background-modifier-border);
+    background: var(--background-primary);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease, transform 0.08s ease;
+}
+.wcg-icon-btn:hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+    border-color: var(--interactive-accent);
+}
+.wcg-icon-btn:active { transform: translateY(1px); }
+.wcg-icon-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--background-primary), 0 0 0 4px var(--interactive-accent);
+}
+.wcg-icon-btn[disabled] { opacity: 0.5; cursor: default; }
+.wcg-icon-btn svg { width: 16px; height: 16px; display: block; }
+.wcg-icon-btn.wcg-spin svg { animation: wcg-rotate 0.8s linear infinite; }
+@keyframes wcg-rotate { to { transform: rotate(360deg); } }
+.wcg-ww-label {
+    width: 26px;
+    min-width: 26px;
+    font-size: 10px;
+    color: var(--text-faint);
+    text-align: right;
+    padding-right: 4px;
+    flex-shrink: 0;
+    font-family: var(--font-monospace);
+    user-select: none;
+    /* Sit midway between the staggered pair so the number reads as this row */
+    transform: translateY(calc(var(--wcg-pitch) / 4));
+}
+.wcg-cur-week .wcg-ww-label {
+    color: var(--interactive-accent);
+    font-weight: 700;
+}
+.wcg-year-label {
+    width: var(--wcg-cell);
+    min-width: var(--wcg-cell);
+    font-size: 9px;
+    color: var(--text-faint);
+    text-align: center;
+    flex-shrink: 0;
+    writing-mode: vertical-rl;
+    height: 44px;
+    overflow: hidden;
+    cursor: default;
+    user-select: none;
+    font-family: var(--font-monospace);
+}
+.wcg-year-label.wcg-cur-year {
+    color: var(--interactive-accent);
+    font-weight: 700;
+}
+.wcg-year-label.wcg-decade-start {
+    border-left: 1px solid var(--background-modifier-border);
+}
+.wcg-cell {
+    width: var(--wcg-cell);
+    min-width: var(--wcg-cell);
+    height: var(--wcg-cell);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
+    border-radius: 50%;
+    pointer-events: auto;
+    --wcg-shift: 0px;
+    transform: translateY(var(--wcg-shift));
+    transition: transform 0.16s cubic-bezier(0.2, 0.7, 0.3, 1),
+                box-shadow 0.16s ease, opacity 0.18s ease;
+}
+/* Every other column is shifted down half a circle → staggered (hex) packing.
+   Offset lives in a custom prop so hover/scale can compose with it. */
+.wcg-cell.wcg-col-offset { --wcg-shift: calc(var(--wcg-pitch) / 2); }
+.wcg-cell:hover {
+    z-index: 5;
+    transform: translateY(var(--wcg-shift)) scale(1.16);
+    box-shadow: inset 0 0 0 2px var(--interactive-accent),
+                0 6px 14px -5px rgba(0, 0, 0, 0.5);
+}
+.wcg-cell:focus-visible {
+    z-index: 5;
+    outline: none;
+    box-shadow: inset 0 0 0 2px var(--interactive-accent);
+}
+.wcg-cell.wcg-cur-cell {
+    box-shadow: inset 0 0 0 2px var(--interactive-accent);
+    animation: wcg-today 2.6s ease-out infinite;
+}
+@keyframes wcg-today {
+    0%   { box-shadow: inset 0 0 0 2px var(--interactive-accent),
+                        0 0 0 0 color-mix(in srgb, var(--interactive-accent) 55%, transparent); }
+    70%  { box-shadow: inset 0 0 0 2px var(--interactive-accent),
+                        0 0 0 8px color-mix(in srgb, var(--interactive-accent) 0%, transparent); }
+    100% { box-shadow: inset 0 0 0 2px var(--interactive-accent),
+                        0 0 0 0 color-mix(in srgb, var(--interactive-accent) 0%, transparent); }
+}
+.wcg-cell.wcg-past {
+    background: var(--background-secondary);
+    cursor: pointer;
+}
+.wcg-cell.wcg-future { cursor: pointer; opacity: 0.16; }
+.wcg-cell.wcg-future:hover { opacity: 1; }
+.wcg-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    text-decoration: none !important;
+    border-radius: 50%;
+    overflow: hidden;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-normal) 14%, transparent);
+}
+.wcg-cell img {
+    width: var(--wcg-cell);
+    height: var(--wcg-cell);
+    object-fit: contain;
+    display: block;
+    pointer-events: none;
+}
+.wcg-status {
+    color: var(--text-muted);
+    font-size: 12px;
+    padding: 8px 0;
+    font-style: italic;
+}
+.wcg-swatch-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 10px 0 16px;
+}
+.wcg-swatch {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+    border: 2px solid transparent;
+    transition: border-color 0.1s;
+}
+.wcg-swatch:hover { border-color: var(--interactive-accent-hover); }
+.wcg-swatch.wcg-swatch-selected { border-color: var(--interactive-accent); }
+.wcg-swatch-dot {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: 1px solid rgba(128,128,128,0.2);
+}
+.wcg-swatch-dot img {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    object-fit: cover;
+    display: block;
+}
+.wcg-swatch-label {
+    font-size: 9px;
+    color: var(--text-muted);
+    text-align: center;
+    max-width: 40px;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.wcg-swatch-selected .wcg-swatch-label { color: var(--text-normal); }
+.wcg-row.wcg-decade-top { border-top: 1px solid var(--background-modifier-border); }
+.wcg-cur-year-lbl { color: var(--interactive-accent); font-weight: 700; }
+@keyframes wcg-flash {
+    0%,100% { box-shadow: inset 0 0 0 2px var(--interactive-accent); }
+    50%     { box-shadow: inset 0 0 0 5px var(--interactive-accent); }
+}
+.wcg-flash { animation: wcg-flash 0.4s ease 3; box-shadow: inset 0 0 0 5px var(--interactive-accent); }
+.wcg-fab {
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    z-index: 9999;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 22px -6px color-mix(in srgb, var(--interactive-accent) 55%, transparent);
+    transition: transform 0.1s ease, box-shadow 0.15s ease;
+}
+.wcg-fab:hover { box-shadow: 0 10px 26px -6px color-mix(in srgb, var(--interactive-accent) 70%, transparent); }
+.wcg-fab:active { transform: scale(0.94); }
+@media (prefers-reduced-motion: reduce) {
+    .wcg-wrap,
+    .wcg-cell,
+    .wcg-cell.wcg-cur-cell,
+    .wcg-flash,
+    .wcg-icon-btn.wcg-spin svg {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+/* ── Day-mode overrides ───────────────────────────────────────────────────────
+   Day view uses the same cell size as the week view (42 px) — with only 10
+   year-columns there's plenty of horizontal room, so big-and-tactile wins. */
+.wcg-day-mode .wcg-cell-empty {
+    visibility: hidden;
+    pointer-events: none;
+}
+/* ── Colours set from code via the --wcg-color custom property ─────────────── */
+.wcg-link,
+.wcg-swatch-dot { background: var(--wcg-color, transparent); }
+.wcg-swatch-dot.wcg-swatch-missing { background: var(--background-modifier-border); }
+.wcg-settings-swatch {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    border: 1px solid var(--background-modifier-border);
+    background: var(--wcg-color, transparent);
+}
+.wcg-fab svg { width: 24px; height: 24px; }
+/* ── Create dialogs ────────────────────────────────────────────────────────── */
+.wcg-field-label {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+.wcg-section-label {
+    margin-top: 14px;
+    margin-bottom: 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+.wcg-drop-zone {
+    border: 2px dashed var(--background-modifier-border);
+    border-radius: 6px;
+    padding: 14px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s;
+}
+.wcg-drop-zone.is-active { border-color: var(--interactive-accent); }
+.wcg-drop-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    pointer-events: none;
+}
+.wcg-file-input { display: none; }
+.wcg-file-list { margin-top: 4px; margin-bottom: 2px; }
+.wcg-file-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-accent);
+    margin-bottom: 2px;
+}
+.wcg-file-name { flex: 1; }
+.wcg-file-remove {
+    cursor: pointer;
+    color: var(--text-muted);
+    padding: 0 4px;
+}
+.wcg-file-clear {
+    font-size: 11px;
+    color: var(--text-muted);
+    cursor: pointer;
+    margin-top: 2px;
+}
+.wcg-immich-box {
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    padding: 8px;
+    max-height: 230px;
+    overflow-y: auto;
+}
+.wcg-immich-note {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 12px 0;
+}
+.wcg-immich-more {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: 4px;
+}
+.wcg-immich-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+    gap: 4px;
+}
+.wcg-immich-tile {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: pointer;
+    background: var(--background-secondary);
+    outline-offset: -2px;
+}
+.wcg-immich-tile.is-selected { outline: 2px solid var(--interactive-accent); }
+.wcg-immich-tile.is-dead { cursor: default; }
+.wcg-immich-tile img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.wcg-immich-badge {
+    position: absolute;
+    bottom: 2px;
+    left: 2px;
+    font-size: 9px;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    padding: 0 3px;
+    border-radius: 3px;
+    z-index: 2;
+    pointer-events: none;
+}
+.wcg-immich-check {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--interactive-accent);
+    color: #fff;
+    font-size: 11px;
+    line-height: 16px;
+    text-align: center;
+    display: none;
+    z-index: 2;
+    pointer-events: none;
+}
+.wcg-immich-tile.is-selected .wcg-immich-check { display: block; }
+.wcg-immich-dead {
+    font-size: 16px;
+    color: var(--text-muted);
+    text-align: center;
+    line-height: 72px;
+}
