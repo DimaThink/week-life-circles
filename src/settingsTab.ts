@@ -1,11 +1,18 @@
 import { App, Notice, Plugin, PluginSettingTab, Setting, normalizePath } from 'obsidian';
 import { DEFAULT_SETTINGS, Settings, SquareDef, normalizeSettings } from './config';
 
-type WlcHost = Plugin & {
+/**
+ * What the settings tab needs from the plugin. A plain interface, NOT a
+ * `Plugin` intersection on purpose: typing the stored reference as
+ * `Plugin & {...}` makes `this.host.settings` resolve to `Plugin.settings`
+ * (added in Obsidian 1.13.0), which trips obsidianmd/no-unsupported-api
+ * against our 1.7.2 minAppVersion. A plain interface keeps `.settings` ours.
+ */
+interface WlcHost {
   /** Edited in place — the object itself is never replaced. */
   readonly settings: Settings;
   saveSettings(): Promise<void>;
-};
+}
 
 type TextKey = 'birthDate' | 'weekFolder' | 'dayFolder' | 'dayTemplatePath' | 'immichUrl' | 'immichApiKey';
 
@@ -15,8 +22,11 @@ export class WeekLifeCirclesSettingTab extends PluginSettingTab {
   private newColor = '#888888';
   private newKey = '';
 
-  constructor(app: App, private readonly host: WlcHost) {
-    super(app, host);
+  private readonly host: WlcHost;
+
+  constructor(app: App, plugin: Plugin & WlcHost) {
+    super(app, plugin);
+    this.host = plugin;
   }
 
   display(): void {
