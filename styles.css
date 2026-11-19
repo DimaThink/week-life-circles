@@ -117,16 +117,15 @@
 .wcg-year-label {
     width: var(--wcg-cell);
     min-width: var(--wcg-cell);
-    font-size: 9px;
+    font-size: 11px;
     color: var(--text-faint);
     text-align: center;
     flex-shrink: 0;
-    writing-mode: vertical-rl;
-    height: 44px;
     overflow: hidden;
     cursor: default;
     user-select: none;
     font-family: var(--font-monospace);
+    font-variant-numeric: tabular-nums;
 }
 .wcg-year-label.wcg-cur-year {
     color: var(--interactive-accent);
