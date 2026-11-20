@@ -35,3 +35,30 @@ export function pagedCellSize(available: number, shape: CellShape): number | nul
 export function isPageStart(yy: number, firstYY: number): boolean {
   return yy === firstYY || yy % 10 === 1;
 }
+
+/** Minimum sideways travel, in px, for a touch gesture to count as a page swipe. */
+export const SWIPE_MIN = 30;
+
+/**
+ * Page step for a finished touch gesture: +1 = next decade (finger moved left),
+ * -1 = previous, 0 = not a sideways swipe (too short, or mostly vertical).
+ */
+export function swipeStep(dx: number, dy: number): -1 | 0 | 1 {
+  if (Math.abs(dx) < SWIPE_MIN || Math.abs(dx) <= Math.abs(dy) * 1.2) return 0;
+  return dx < 0 ? 1 : -1;
+}
+
+/**
+ * scrollLeft of the page `step` pages away from the one nearest `scrollLeft`
+ * (nearest, not "last one passed": the final page may be clamped a few px
+ * short of its start). Clamped to the first/last page; null with no pages.
+ */
+export function pageTarget(pageLefts: number[], scrollLeft: number, step: number): number | null {
+  if (pageLefts.length === 0) return null;
+  let cur = 0;
+  for (let i = 1; i < pageLefts.length; i++) {
+    if (Math.abs(pageLefts[i] - scrollLeft) < Math.abs(pageLefts[cur] - scrollLeft)) cur = i;
+  }
+  const next = Math.min(Math.max(cur + step, 0), pageLefts.length - 1);
+  return pageLefts[next];
+}

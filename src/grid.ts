@@ -4,7 +4,7 @@ import { Cell, CellMap, CellShape, Settings } from './config';
 import { colorMap } from './squares';
 import { dayLabel, isMonthStart } from './months';
 import { momentFmt } from './momentFmt';
-import { BASE_CELL, LABEL_W, isPageStart, pagedCellSize } from './layout';
+import { BASE_CELL, LABEL_W, isPageStart, pageTarget, pagedCellSize, swipeStep } from './layout';
 
 export interface GridHost {
   readonly app: App;
@@ -149,6 +149,45 @@ export function applyPaging(outer: HTMLElement, root: HTMLElement, shape: CellSh
   if (anchor) root.scrollLeft = leftFor(root, size !== null ? pageStartOf(anchor) : anchor);
 }
 
+/** Flip a paged grid one decade forward (+1) or back (-1). */
+function flipPage(root: HTMLElement, step: number): void {
+  const row = root.querySelector<HTMLElement>('.wcg-wrap > .wcg-row');
+  if (!row) return;
+  const lefts = Array.from(row.querySelectorAll<HTMLElement>(':scope > .wcg-page-start')).map(c => leftFor(root, c));
+  const left = pageTarget(lefts, root.scrollLeft, step);
+  if (left !== null) root.scrollTo({ left, behavior: 'smooth' });
+}
+
+/**
+ * Touch paging for narrow views. In paged mode native sideways panning is off
+ * (CSS `touch-action: pan-y`, so iOS can't fling between decades), vertical
+ * scrolling stays native, and a sideways swipe flips exactly one decade here.
+ * A horizontal swipe isn't passed on, so it can't also open a sidebar.
+ */
+function attachDecadeSwipe(root: HTMLElement): void {
+  let x0 = 0, y0 = 0, tracking = false, sideways: boolean | null = null;
+  root.addEventListener('touchstart', (e) => {
+    tracking = root.hasClass('wcg-paged') && e.touches.length === 1;
+    sideways = null;
+    if (tracking) { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }
+  }, { passive: true });
+  root.addEventListener('touchmove', (e) => {
+    if (!tracking) return;
+    if (e.touches.length !== 1) { tracking = false; return; }
+    const dx = e.touches[0].clientX - x0, dy = e.touches[0].clientY - y0;
+    if (sideways === null && Math.max(Math.abs(dx), Math.abs(dy)) > 8) sideways = Math.abs(dx) > Math.abs(dy);
+    if (sideways) e.stopPropagation();
+  }, { passive: true });
+  root.addEventListener('touchend', (e) => {
+    if (!tracking) return;
+    tracking = false;
+    const t = e.changedTouches[0];
+    const step = swipeStep(t.clientX - x0, t.clientY - y0);
+    if (step !== 0) flipPage(root, step);
+  }, { passive: true });
+  root.addEventListener('touchcancel', () => { tracking = false; }, { passive: true });
+}
+
 /** Leftmost column cell not hidden under the frozen labels, or null when scrolled to the start. */
 function firstVisibleCell(root: HTMLElement): HTMLElement | null {
   if (root.scrollLeft <= 0) return null;
@@ -187,6 +226,7 @@ function renderShell(el: HTMLElement, title: string, rootCls: string, shape: Cel
   root.addEventListener('scroll', () => {
     headerTrack.setCssProps({ '--wcg-scroll-x': `${-root.scrollLeft}px` });
   }, { passive: true });
+  attachDecadeSwipe(root);
   return { outer, root, headerTrack, toolbar, info };
 }
 

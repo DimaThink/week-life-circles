@@ -368,6 +368,8 @@
 .wcg-view-root.wcg-paged {
     scroll-snap-type: x mandatory;
     padding-right: 0;
+    /* touch: only vertical panning is native; sideways swipes flip one decade from code */
+    touch-action: pan-y;
 }
 .wcg-paged .wcg-cell { scroll-snap-align: none; }
 .wcg-paged .wcg-cell.wcg-page-start {
@@ -396,20 +398,30 @@
     visibility: hidden;
     pointer-events: none;
 }
-/* Months: a thin line above the cell that is a month's 1st, spanning the column
-   pitch and sitting in the middle of the row gap. Drawn per cell, so it follows
-   the column's stagger and a leap year's one-row shift. The cell itself must not
-   clip it; round clipping of the content is done by .wcg-link and the image. */
+/* Months in the day view, marked per cell (so a leap year's one-row shift stays
+   true). Circles: the honeycomb stagger would break a separator line into a
+   zigzag of stubs, so the month's 1st gets a thin outer ring instead (it fits in
+   the 7px clearance to every neighbour). Squares: a straight line in the middle
+   of the row gap above the cell, spanning the column pitch. The cell must not
+   clip either; round clipping of content is done by .wcg-link and the image. */
 .wcg-day-mode .wcg-cell.wcg-month-start { overflow: visible; }
 .wcg-day-mode .wcg-cell.wcg-month-start::before {
     content: '';
     position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--text-normal) 45%, transparent);
+    pointer-events: none;
+}
+.wcg-shape-square .wcg-day-mode .wcg-cell.wcg-month-start::before {
+    inset: auto;
     left: calc(var(--wcg-hgap) / -2);
     right: calc(var(--wcg-hgap) / -2);
     top: calc(var(--wcg-vgap) / -2 - 0.5px);
     height: 1px;
+    border-radius: 0;
+    box-shadow: none;
     background: var(--background-modifier-border-hover);
-    pointer-events: none;
 }
 .wcg-month-label {
     color: var(--text-muted);

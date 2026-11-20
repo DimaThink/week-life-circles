@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { columnPitch, pagedCellSize, isPageStart, BASE_CELL, PAGE_COLUMNS } from '../src/layout';
+import { columnPitch, pagedCellSize, isPageStart, swipeStep, pageTarget, BASE_CELL, PAGE_COLUMNS } from '../src/layout';
 
 describe('columnPitch', () => {
   it('matches the CSS geometry at 42px', () => {
@@ -55,5 +55,40 @@ describe('isPageStart', () => {
     expect(isPageStart(20, 20)).toBe(true);
     expect(isPageStart(21, 20)).toBe(true);
     expect(isPageStart(41, 20)).toBe(true);
+  });
+});
+
+describe('swipeStep', () => {
+  it('left swipe = next decade, right swipe = previous', () => {
+    expect(swipeStep(-80, 5)).toBe(1);
+    expect(swipeStep(80, -5)).toBe(-1);
+  });
+  it('ignores taps, short drags and mostly-vertical scrolls', () => {
+    expect(swipeStep(0, 0)).toBe(0);
+    expect(swipeStep(-20, 0)).toBe(0);
+    expect(swipeStep(-60, 200)).toBe(0);
+    expect(swipeStep(-60, 50)).toBe(0); // 60 is not > 50 × 1.2
+  });
+});
+
+describe('pageTarget', () => {
+  const lefts = [0, 348, 696, 1044]; // decade pages
+  it('moves exactly one page, never skipping', () => {
+    expect(pageTarget(lefts, 0, 1)).toBe(348);
+    expect(pageTarget(lefts, 348, 1)).toBe(696);
+    expect(pageTarget(lefts, 696, -1)).toBe(348);
+  });
+  it('a clamped last page still counts as the last page', () => {
+    expect(pageTarget(lefts, 1040, -1)).toBe(696);
+    expect(pageTarget(lefts, 1040, 1)).toBe(1044);
+  });
+  it('mid-way between pages picks the nearer one as current', () => {
+    expect(pageTarget(lefts, 300, 1)).toBe(696);
+    expect(pageTarget(lefts, 100, 1)).toBe(348);
+  });
+  it('clamps at both ends; null without pages', () => {
+    expect(pageTarget(lefts, 0, -1)).toBe(0);
+    expect(pageTarget(lefts, 1044, 1)).toBe(1044);
+    expect(pageTarget([], 0, 1)).toBeNull();
   });
 });

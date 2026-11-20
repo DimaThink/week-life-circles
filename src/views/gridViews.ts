@@ -31,6 +31,11 @@ export abstract class GridView extends ItemView {
     await this.refresh();
   }
 
+  /** Obsidian's own resize hook (pane resized / shown) — a second trigger besides the observer. */
+  onResize(): void {
+    reapplyPaging(this.contentEl, this.host.settings.cellShape);
+  }
+
   async onClose(): Promise<void> {
     this.resizeObserver?.disconnect();
     this.resizeObserver = null;
