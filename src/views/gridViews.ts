@@ -1,12 +1,14 @@
 import { ItemView } from 'obsidian';
 import type { WorkspaceLeaf } from 'obsidian';
-import { GridHost, flashCell, renderDayGrid, renderWeekGrid } from '../grid';
+import { GridHost, flashCell, reapplyPaging, renderDayGrid, renderWeekGrid } from '../grid';
 
 export const WEEK_VIEW_TYPE = 'wlc-week-grid';
 export const DAY_VIEW_TYPE = 'wlc-day-grid';
 
 export abstract class GridView extends ItemView {
   private rendered: Promise<void> = Promise.resolve();
+  private resizeObserver: ResizeObserver | null = null;
+  private resizeFrame = 0;
 
   constructor(leaf: WorkspaceLeaf, protected readonly host: GridHost) {
     super(leaf);
@@ -15,7 +17,26 @@ export abstract class GridView extends ItemView {
   protected abstract render(): Promise<void>;
 
   async onOpen(): Promise<void> {
+    // Width changes (phone rotation, split pane, sidebar) flip decade paging on/off
+    // and resize the paged cells. Use this window's constructor so popouts work too.
+    const win = this.contentEl.win as Window & typeof globalThis;
+    this.resizeObserver = new win.ResizeObserver(() => {
+      if (this.resizeFrame) return;
+      this.resizeFrame = win.requestAnimationFrame(() => {
+        this.resizeFrame = 0;
+        reapplyPaging(this.contentEl, this.host.settings.cellShape);
+      });
+    });
+    this.resizeObserver.observe(this.contentEl);
     await this.refresh();
+  }
+
+  async onClose(): Promise<void> {
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = null;
+    if (this.resizeFrame) this.contentEl.win.cancelAnimationFrame(this.resizeFrame);
+    this.resizeFrame = 0;
+    await super.onClose();
   }
 
   /**

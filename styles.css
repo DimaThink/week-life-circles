@@ -348,6 +348,19 @@
         transition: none;
     }
 }
+/* ── Decade paging (narrow views, columns = years) ──────────────────────────
+   The cell size is set from code so exactly 10 columns fill the view; a swipe
+   moves one decade and can't stop between decades or skip one on a flick.
+   No right padding: the day grid's 10 columns then fit with no sideways scroll. */
+.wcg-view-root.wcg-paged {
+    scroll-snap-type: x mandatory;
+    padding-right: 0;
+}
+.wcg-paged .wcg-cell { scroll-snap-align: none; }
+.wcg-paged .wcg-cell.wcg-page-start {
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+}
 /* ── Square view: a plain aligned grid like the classic poster ────────────────
    Gap 4px both ways (= SQUARE_GAP in src/layout.ts). Rows are `cell` tall and
    `vgap` apart, so the row stride is cell + 4px = pitch; each frozen label is

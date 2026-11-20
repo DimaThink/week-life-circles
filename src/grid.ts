@@ -2,6 +2,7 @@ import { App, TFile } from 'obsidian';
 import { Calendar, WEEKS_PER_YEAR, formatYMD, pad2 } from './calendar';
 import { Cell, CellMap, CellShape, Settings } from './config';
 import { colorMap } from './squares';
+import { BASE_CELL, LABEL_W, columnPitch, isPageStart, pagedCellSize } from './layout';
 
 export interface GridHost {
   readonly app: App;
@@ -78,7 +79,47 @@ export function flashCell(cell: HTMLElement): void {
 
 const isDecadeStart = (yy: number): boolean => yy % 10 === 1;
 
-interface Shell { root: HTMLElement; headerTrack: HTMLElement; toolbar: HTMLElement; info: HTMLElement }
+/** Cell size each view's outer element was last paged at (absent = full size). */
+const pagedSizes = new WeakMap<HTMLElement, number>();
+
+/**
+ * Decade paging for narrow views: when 10 year-columns don't fit at full size,
+ * shrink the cells so exactly 10 do and snap sideways scrolling to decade
+ * starts (one swipe = one decade); otherwise restore full size and free
+ * scrolling. Only grids whose columns are years (cells marked
+ * `wcg-page-start`) page. Safe to call repeatedly, e.g. on every resize.
+ */
+export function applyPaging(outer: HTMLElement, root: HTMLElement, shape: CellShape): void {
+  const pageable = !root.hasClass('wcg-transposed') && root.querySelector('.wcg-page-start') !== null;
+  // hidden/unsized view (width 0) → pagedCellSize gives null → stays unpaged until a real width arrives
+  const size = pageable ? pagedCellSize(root.clientWidth - LABEL_W, shape) : null;
+  const prevCell = pagedSizes.get(outer) ?? BASE_CELL;
+  const nextCell = size ?? BASE_CELL;
+  if (size !== null) {
+    outer.setCssProps({ '--wcg-cell': `${size}px` });
+    root.addClass('wcg-paged');
+    pagedSizes.set(outer, size);
+  } else {
+    outer.setCssProps({ '--wcg-cell': '' });
+    root.removeClass('wcg-paged');
+    pagedSizes.delete(outer);
+  }
+  // Cell size changed (rotation, split pane): keep the same column in view;
+  // in paged mode the mandatory snap then settles on that column's decade.
+  if (nextCell !== prevCell && root.scrollLeft > 0) {
+    const col = Math.round(root.scrollLeft / columnPitch(prevCell, shape));
+    root.scrollLeft = col * columnPitch(nextCell, shape);
+  }
+}
+
+/** Re-apply paging to the grid currently rendered inside `el` (no-op if there is none). */
+export function reapplyPaging(el: HTMLElement, shape: CellShape): void {
+  const outer = el.querySelector<HTMLElement>('.wcg-outer');
+  const root = outer?.querySelector<HTMLElement>('.wcg-view-root');
+  if (outer && root) applyPaging(outer, root, shape);
+}
+
+interface Shell { outer: HTMLElement; root: HTMLElement; headerTrack: HTMLElement; toolbar: HTMLElement; info: HTMLElement }
 
 /** Empty `el` and build the frame both grids share: sticky toolbar with title + counter. */
 function renderShell(el: HTMLElement, title: string, rootCls: string, shape: CellShape): Shell {
@@ -97,7 +138,7 @@ function renderShell(el: HTMLElement, title: string, rootCls: string, shape: Cel
   root.addEventListener('scroll', () => {
     headerTrack.setCssProps({ '--wcg-scroll-x': `${-root.scrollLeft}px` });
   }, { passive: true });
-  return { root, headerTrack, toolbar, info };
+  return { outer, root, headerTrack, toolbar, info };
 }
 
 function renderNoBirthDate(el: HTMLElement): void {
@@ -195,7 +236,7 @@ export async function renderWeekGrid(el: HTMLElement, host: GridHost): Promise<v
   const cal = host.calendar;
   if (cal === null) { renderNoBirthDate(el); return; }
 
-  const { root, headerTrack, toolbar, info } = renderShell(
+  const { outer, root, headerTrack, toolbar, info } = renderShell(
     el, 'Life in weeks', host.transposed ? 'wcg-view-root wcg-transposed' : 'wcg-view-root', host.settings.cellShape);
   const transposed = host.transposed;
   const rotateBtn = iconButton(
@@ -242,6 +283,7 @@ export async function renderWeekGrid(el: HTMLElement, host: GridHost): Promise<v
       for (const yy of years) {
         const cell = makeCell(row, yy, ww, yy - startAge);
         if (isDecadeStart(yy)) cell.addClass('wcg-decade-start');
+        if (isPageStart(yy, years[0])) cell.addClass('wcg-page-start');
       }
     }
   } else {
@@ -260,13 +302,14 @@ export async function renderWeekGrid(el: HTMLElement, host: GridHost): Promise<v
       for (const ww of weeks) makeCell(row, yy, ww, ww - 1);
     }
   }
+  applyPaging(outer, root, host.settings.cellShape);
 }
 
 export async function renderDayGrid(el: HTMLElement, host: GridHost): Promise<void> {
   const cal = host.calendar;
   if (cal === null) { renderNoBirthDate(el); return; }
 
-  const { root, headerTrack, toolbar, info } = renderShell(
+  const { outer, root, headerTrack, toolbar, info } = renderShell(
     el, 'Life in days', 'wcg-view-root wcg-day-mode', host.settings.cellShape);
   const todayBtn = iconButton(toolbar, ICON_TODAY, 'Scroll to today');
   rebuildButton(toolbar, 'Rebuild day cache', () => host.rebuildDayCache(), () => renderDayGrid(el, host));
@@ -317,8 +360,10 @@ export async function renderDayGrid(el: HTMLElement, host: GridHost): Promise<vo
         }
       }
       if (isDecadeStart(yy)) cell.addClass('wcg-decade-start');
+      if (isPageStart(yy, years[0])) cell.addClass('wcg-page-start');
     }
   }
+  applyPaging(outer, root, host.settings.cellShape);
 
   const todayCell = (): HTMLElement | null =>
     curYY == null || curDOY == null
