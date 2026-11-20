@@ -1,12 +1,8 @@
 # Week Life Circles
 
-A life-in-weeks grid journal for [Obsidian](https://obsidian.md).
+A life-in-weeks journal for [Obsidian](https://obsidian.md) · **[week.dth.ink](https://week.dth.ink)**
 
-Your life is drawn as a grid of circles: 52 weeks down, one column per year of
-your life. Every circle is one week. Write a note for a week, give it a color
-("what kind of week was it?"), and the circle fills in. Click a filled circle to
-open its note; click an empty one to create it. A second view does the same for
-single days.
+Week Life Circles draws your life as a grid: 52 weeks down, one column per year, one circle per week. Write a note for a week, choose what kind of week it was, and its circle fills in with that colour or a small image. Click a filled circle to open its note, or an empty one to create it. A second view does the same for single days, and every note is a plain Markdown file in your vault.
 
 ## Screenshots
 
