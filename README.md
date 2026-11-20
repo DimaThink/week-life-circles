@@ -34,8 +34,8 @@ day or two). That is why the plugin needs your birth date before it shows anythi
 - **Week grid** — every week of your life from a start age to an end age, as a
   staggered grid of circles. The current week pulses. Rows and columns can be swapped.
 - **Day grid** — the next ten personal years, one circle per day. The row
-  labels show the calendar date (the month's short name on the 1st), and a thin
-  line marks where each calendar month starts in every column.
+  labels show the calendar date (the month's short name on the 1st), and each
+  month's 1st is marked in every column (a thin ring with circles, a line with squares).
 - **Circles or squares** — draw the grids as circles in a honeycomb, or as
   squares in a plain aligned grid like the classic "life in weeks" poster.
 - **Squares** — each note carries one colored square (or a small image, e.g. a
