@@ -1,6 +1,6 @@
 import { ItemView } from 'obsidian';
 import type { WorkspaceLeaf } from 'obsidian';
-import { GridHost, flashCell, reapplyPaging, renderDayGrid, renderWeekGrid } from '../grid';
+import { GridHost, flashCell, reapplyPaging, renderDayGrid, renderWeekGrid, revealCell } from '../grid';
 
 export const WEEK_VIEW_TYPE = 'wlc-week-grid';
 export const DAY_VIEW_TYPE = 'wlc-day-grid';
@@ -50,7 +50,10 @@ export abstract class GridView extends ItemView {
       const root = this.contentEl.querySelector<HTMLElement>('.wcg-view-root');
       if (!root) return;
       if (keep && keep.cls === root.className) root.scrollTo(keep.left, keep.top);
-      else root.querySelector<HTMLElement>('.wcg-cur-cell')?.scrollIntoView({ block: 'center', inline: 'center' });
+      else {
+        const cur = root.querySelector<HTMLElement>('.wcg-cur-cell');
+        if (cur) revealCell(cur);
+      }
     });
     return this.rendered;
   }

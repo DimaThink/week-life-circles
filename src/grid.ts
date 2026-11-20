@@ -4,7 +4,7 @@ import { Cell, CellMap, CellShape, Settings } from './config';
 import { colorMap } from './squares';
 import { dayLabel, isMonthStart } from './months';
 import { momentFmt } from './momentFmt';
-import { BASE_CELL, LABEL_W, columnPitch, isPageStart, pagedCellSize } from './layout';
+import { BASE_CELL, LABEL_W, isPageStart, pagedCellSize } from './layout';
 
 export interface GridHost {
   readonly app: App;
@@ -72,9 +72,42 @@ function iconButton(toolbar: HTMLElement, shapes: Shape[], label: string): HTMLB
   return btn;
 }
 
+/** The decade page's first cell in `cell`'s row (the cell itself if it starts a page). */
+function pageStartOf(cell: HTMLElement): HTMLElement {
+  for (let c: Element | null = cell; c; c = c.previousElementSibling) {
+    if (c.instanceOf(HTMLElement) && c.hasClass('wcg-page-start')) return c;
+  }
+  return cell;
+}
+
+/** scrollLeft that puts `cell` flush against the frozen label column. */
+function leftFor(root: HTMLElement, cell: HTMLElement): number {
+  return root.scrollLeft + cell.getBoundingClientRect().left - root.getBoundingClientRect().left - LABEL_W;
+}
+
+/**
+ * Bring a cell into view, vertically centred. Unpaged: centred sideways too.
+ * Paged: show the cell's whole decade — centring would let the mandatory snap
+ * pick the next decade for a cell in a decade's second half.
+ */
+export function revealCell(cell: HTMLElement, behavior: ScrollBehavior = 'auto'): void {
+  const root = cell.closest<HTMLElement>('.wcg-view-root');
+  if (!root?.hasClass('wcg-paged')) {
+    cell.scrollIntoView({ behavior, block: 'center', inline: 'center' });
+    return;
+  }
+  const r = cell.getBoundingClientRect();
+  const v = root.getBoundingClientRect();
+  root.scrollTo({
+    left: leftFor(root, pageStartOf(cell)),
+    top: root.scrollTop + (r.top + r.height / 2) - (v.top + root.clientHeight / 2),
+    behavior,
+  });
+}
+
 /** Scroll a cell into view and flash it. */
 export function flashCell(cell: HTMLElement): void {
-  cell.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+  revealCell(cell, 'smooth');
   cell.classList.add('wcg-flash');
   window.setTimeout(() => cell.classList.remove('wcg-flash'), 1200);
 }
@@ -94,9 +127,14 @@ const pagedSizes = new WeakMap<HTMLElement, number>();
 export function applyPaging(outer: HTMLElement, root: HTMLElement, shape: CellShape): void {
   const pageable = !root.hasClass('wcg-transposed') && root.querySelector('.wcg-page-start') !== null;
   // hidden/unsized view (width 0) → pagedCellSize gives null → stays unpaged until a real width arrives
-  const size = pageable ? pagedCellSize(root.clientWidth - LABEL_W, shape) : null;
+  const raw = pageable ? pagedCellSize(root.clientWidth - LABEL_W, shape) : null;
+  // floor to 1/64px: rounding up could make 10 columns overflow by a pixel
+  const size = raw === null ? null : Math.floor(raw * 64) / 64;
   const prevCell = pagedSizes.get(outer) ?? BASE_CELL;
   const nextCell = size ?? BASE_CELL;
+  // Note the leftmost visible column BEFORE any style write: reading scroll
+  // after the change would see an already clamped / re-snapped position.
+  const anchor = nextCell !== prevCell ? firstVisibleCell(root) : null;
   if (size !== null) {
     outer.setCssProps({ '--wcg-cell': `${size}px` });
     root.addClass('wcg-paged');
@@ -106,12 +144,21 @@ export function applyPaging(outer: HTMLElement, root: HTMLElement, shape: CellSh
     root.removeClass('wcg-paged');
     pagedSizes.delete(outer);
   }
-  // Cell size changed (rotation, split pane): keep the same column in view;
-  // in paged mode the mandatory snap then settles on that column's decade.
-  if (nextCell !== prevCell && root.scrollLeft > 0) {
-    const col = Math.round(root.scrollLeft / columnPitch(prevCell, shape));
-    root.scrollLeft = col * columnPitch(nextCell, shape);
+  // Cell size changed (rotation, split pane): keep the same column in view —
+  // paged, on the page of the decade that contains it.
+  if (anchor) root.scrollLeft = leftFor(root, size !== null ? pageStartOf(anchor) : anchor);
+}
+
+/** Leftmost column cell not hidden under the frozen labels, or null when scrolled to the start. */
+function firstVisibleCell(root: HTMLElement): HTMLElement | null {
+  if (root.scrollLeft <= 0) return null;
+  const row = root.querySelector<HTMLElement>('.wcg-wrap > .wcg-row');
+  if (!row) return null;
+  const edge = root.getBoundingClientRect().left + LABEL_W - 1;
+  for (const c of Array.from(row.children)) {
+    if (c.instanceOf(HTMLElement) && c.hasClass('wcg-cell') && c.getBoundingClientRect().left >= edge) return c;
   }
+  return null;
 }
 
 /** Re-apply paging to the grid currently rendered inside `el` (no-op if there is none). */

@@ -8,7 +8,7 @@
     --wcg-cell: 42px;                                              /* circle diameter (D) */
     --wcg-pitch: calc(var(--wcg-cell) * 49 / 42);                  /* equal centre-to-centre distance to all 6 neighbours (S); 49px at 42px */
     --wcg-vgap: calc(var(--wcg-pitch) - var(--wcg-cell));          /* row gap = S - D */
-    --wcg-hgap: calc(var(--wcg-pitch) * 0.86603 - var(--wcg-cell));/* column gap so column pitch = S·√3/2 */
+    --wcg-hgap: calc(var(--wcg-pitch) * 0.8660254 - var(--wcg-cell));/* column gap so column pitch = S·√3/2 */
 }
 .wcg-view-root {
     flex: 1 1 auto;
