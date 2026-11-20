@@ -522,7 +522,12 @@ body .wcg-sq-img img {
 }
 .wcg-sq-add-preview { display: inline-flex; }
 .wcg-sq-add-preview:empty { display: none; }
-.wcg-sq-name-input { width: 9em; }
+.wcg-sq-name-input { width: 9em; min-width: 7em; }
+.wcg-sq-row .setting-item-info { flex: 1 1 auto; min-width: 0; }
+.wcg-sq-row .wcg-sq-name-input { flex: 1 1 auto; width: auto; max-width: 18em; min-width: 0; }
+.wcg-sq-row .setting-item-control,
+.wcg-sq-add .setting-item-control { flex-wrap: wrap; row-gap: 6px; }
+.wcg-sq-row .setting-item-description { overflow-wrap: anywhere; }
 .wcg-fab svg { width: 24px; height: 24px; }
 /* ── Create dialogs ────────────────────────────────────────────────────────── */
 .wcg-field-label {

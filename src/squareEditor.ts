@@ -1,4 +1,4 @@
-import { App, FuzzySuggestModal, Modal, Notice, Setting, TFile, normalizePath } from 'obsidian';
+import { App, FuzzySuggestModal, Modal, Notice, Setting, TFile, TextComponent, normalizePath } from 'obsidian';
 import type { CellShape, SquareDef } from './config';
 import { squareImage } from './squares';
 import {
@@ -207,10 +207,13 @@ export class SquareEditor {
     row.nameEl.addClass('wcg-sq-row-name');
     const file = q.color ? null : app.metadataCache.getFirstLinkpathDest(squareImage(q), '');
     row.setDesc(q.color ? (i === 0 ? 'Colour · default for new notes' : 'Colour')
-      : file ? `Image · ${file.path}${i === 0 ? ' · default for new notes' : ''}`
+      : file ? `Image · ${file.name}${i === 0 ? ' · default for new notes' : ''}`
         : `Image missing: ${squareImage(q)} — upload one to restore it`);
+    if (file) row.descEl.setAttribute('title', file.path);
 
-    row.addText(t => {
+    // name sits next to its preview, not among the buttons: on a phone the control
+    // row is too narrow and squeezed the field down to a single letter
+    ((t: TextComponent) => {
       t.setPlaceholder('Name').setValue(q.name);
       t.inputEl.addClass('wcg-sq-name-input');
       // saved as you type (debounced; flushed when settings close), no re-render: focus stays
@@ -222,7 +225,7 @@ export class SquareEditor {
         this.stripLabels.get(q)?.parentElement?.setAttribute('title', name);
         this.saveSoon();
       });
-    });
+    })(new TextComponent(row.nameEl));
 
     if (q.color) {
       row.addColorPicker(cp => {
