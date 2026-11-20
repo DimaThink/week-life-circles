@@ -15,14 +15,16 @@ function photoEmbed(name: string): string {
   return `![[${name}${PHOTO_IMAGE_EXTS.has(ext) ? '|600' : ''}]]`;
 }
 
+/** Text of a new week note: the template note's text if one is set and found, else the settings template. */
 export function buildWeekNote(opts: {
   ww: string; yy: string; square: string; dateStr: string; photoNames: string[]; settings: Settings;
+  templateRaw?: string | null;
 }): string {
   const { ww, yy, square, dateStr, photoNames, settings } = opts;
   const sq = squareMarkup(square, settings.squares);
   const photos = photoNames.map(photoEmbed).join('\n');
   // function replacers: avoid `$` special patterns in substituted values
-  return settings.weekTemplate
+  return (opts.templateRaw ?? settings.weekTemplate)
     // a `{{photos}}` line of its own leaves no blank line behind when there are no photos
     .replace(/^\{\{photos\}\}\n/gm, () => (photos ? photos + '\n' : ''))
     .replace(/\{\{ww\}\}/g, () => ww)

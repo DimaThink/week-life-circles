@@ -14,6 +14,7 @@ export interface Settings {
   endAge: number;
   weekFolder: string;
   dayFolder: string;
+  weekTemplatePath: string; // "" = use the weekTemplate text below
   dayTemplatePath: string; // "" = use built-in day template
   weekTemplate: string;
   dayTemplate: string;
@@ -97,6 +98,7 @@ export const DEFAULT_SETTINGS: Settings = {
   endAge: 100,
   weekFolder: 'Week life calendar',
   dayFolder: 'Week day status',
+  weekTemplatePath: '',
   dayTemplatePath: '',
   weekTemplate: DEFAULT_WEEK_TEMPLATE,
   dayTemplate: DEFAULT_DAY_TEMPLATE,
@@ -146,6 +148,7 @@ export function normalizeSettings(s: Partial<Settings> | null | undefined): Sett
     endAge: Math.min(Math.max(num('endAge'), startAge + 1), MAX_AGE),
     weekFolder: str('weekFolder'),
     dayFolder: str('dayFolder'),
+    weekTemplatePath: str('weekTemplatePath'),
     dayTemplatePath: str('dayTemplatePath'),
     weekTemplate: str('weekTemplate'),
     dayTemplate: str('dayTemplate'),

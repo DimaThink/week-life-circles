@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { DEFAULT_SETTINGS } from '../src/config';
+import { DEFAULT_SETTINGS, normalizeSettings } from '../src/config';
 import { buildWeekNote, renderDayTemplate, squareMarkup } from '../src/templates';
 
 describe('squareMarkup', () => {
@@ -42,5 +42,23 @@ describe('renderDayTemplate', () => {
     const out = renderDayTemplate({ ...base, templateRaw: raw, square: 'sample.png',
       settings: { ...DEFAULT_SETTINGS, squares: [{ key: 'sample.png', name: 'K', color: null }] } });
     expect(out).toBe('# 2025-04-30 · Wednesday ![[sample.png|14]]\nyesterday: 2025-04-29');
+  });
+});
+
+describe('week template path', () => {
+  const base = { ww: '07', yy: '28', square: 'work.png', dateStr: '18.11.2026', photoNames: ['07.28.jpg'] };
+  it('a template note replaces the built-in week template, same placeholders', () => {
+    const out = buildWeekNote({ ...base, settings: DEFAULT_SETTINGS, templateRaw: '{{ww}}.{{yy}} {{square}}\n{{photos}}\nend' });
+    expect(out).toBe('07.28 <span class="sq sq-work"></span>\n![[07.28.jpg|600]]\nend');
+  });
+  it('no template note → the settings text', () => {
+    const settings = { ...DEFAULT_SETTINGS, weekTemplate: 'W {{ww}}' };
+    expect(buildWeekNote({ ...base, settings, templateRaw: null })).toBe('W 07');
+    expect(buildWeekNote({ ...base, settings })).toBe('W 07');
+  });
+  it('setting defaults to empty and survives normalization', () => {
+    expect(DEFAULT_SETTINGS.weekTemplatePath).toBe('');
+    expect(normalizeSettings({ weekTemplatePath: 'Templates/Week.md' }).weekTemplatePath).toBe('Templates/Week.md');
+    expect(normalizeSettings({ weekTemplatePath: 5 as never }).weekTemplatePath).toBe('');
   });
 });

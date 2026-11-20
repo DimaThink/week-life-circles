@@ -81,7 +81,7 @@ an embed: `![[england.png|14]]`.
 | Start age / End age | First and last personal year shown in the week grid. |
 | Cell shape | **Circles** (a honeycomb, the default) or **Squares** (a plain aligned grid). Applies to both grids. |
 | Week folder / Day folder | Where week and day notes are stored. |
-| Day template path | Optional path to a note used as the day template instead of the built-in one. The same placeholders work in it. |
+| Week template path / Day template path | Optional path to a note used as the week or day template instead of the built-in one. The same placeholders work in it. |
 | Week template / Day template | Text of new notes. Placeholders: `{{ww}}`, `{{yy}}`, `{{square}}`, `{{date}}`, `{{photos}}` (week), `{{weekday}}` (day). The weekday is written in Obsidian's language. |
 | Squares | The list of squares: a name plus either a color or an image file in your vault. |
 | Immich | Optional photo picker, see below. |

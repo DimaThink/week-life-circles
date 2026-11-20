@@ -14,7 +14,7 @@ interface WlcHost {
   saveSettings(): Promise<void>;
 }
 
-type TextKey = 'birthDate' | 'weekFolder' | 'dayFolder' | 'dayTemplatePath' | 'immichUrl' | 'immichApiKey';
+type TextKey = 'birthDate' | 'weekFolder' | 'dayFolder' | 'weekTemplatePath' | 'dayTemplatePath' | 'immichUrl' | 'immichApiKey';
 
 export class WeekLifeCirclesSettingTab extends PluginSettingTab {
   private newName = '';
@@ -114,6 +114,8 @@ export class WeekLifeCirclesSettingTab extends PluginSettingTab {
 
     addText('Week folder', 'weekFolder', folder(DEFAULT_SETTINGS.weekFolder));
     addText('Day folder', 'dayFolder', folder(DEFAULT_SETTINGS.dayFolder));
+    addText('Week template path', 'weekTemplatePath', v => (v.trim() ? normalizePath(v.trim()) : ''),
+      'Optional: path to a note used as the week template. Leave blank to use the week template below.');
     addText('Day template path', 'dayTemplatePath', v => (v.trim() ? normalizePath(v.trim()) : ''),
       'Optional: path to a Templater daily-note template. Leave blank to use the built-in day template.');
 

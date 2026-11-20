@@ -1,4 +1,4 @@
-import { Modal, Notice, Setting } from 'obsidian';
+import { Modal, Notice, Setting, TFile } from 'obsidian';
 import { formatDMY, pad2, WEEKS_PER_YEAR } from '../calendar';
 import { buildWeekNote, PHOTO_IMAGE_EXTS } from '../templates';
 import type { ImmichAsset } from '../immich';
@@ -267,8 +267,11 @@ export class CreateWeekModal extends Modal {
     // Line-1 date = the day the entry is written, NOT the computed week start.
     const dateStr = formatDMY(new Date());
     const photoNames = files.map((f, i) => photoFileName(ww, yy, i, f.ext));
+    const tplPath = this.host.settings.weekTemplatePath;
+    const tpl = tplPath ? vault.getAbstractFileByPath(tplPath) : null;
+    const templateRaw = tpl instanceof TFile ? await vault.read(tpl) : null;
     const body = buildWeekNote({
-      ww, yy, square: this.square, dateStr, photoNames, settings: this.host.settings,
+      ww, yy, square: this.square, dateStr, photoNames, settings: this.host.settings, templateRaw,
     });
 
     const filePath = weekNotePath(weekFolder, yy, ww);
