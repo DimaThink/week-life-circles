@@ -76,10 +76,10 @@ describe('parseBirthDate', () => {
 describe('config code (encode/parse)', () => {
   const sample = normalizeSettings({
     ...DEFAULT_SETTINGS,
-    birthDate: '1998-04-30',
+    birthDate: '2000-01-01',
     immichApiKey: 'secret-key',
     weekTemplate: '# Що було\n', // non-ASCII survives
-    squares: [{ key: 'korea.png', name: 'Korea', color: null }],
+    squares: [{ key: 'flag.png', name: 'Trip', color: null }],
   });
 
   it('round-trips settings through a code (incl. non-ASCII + the key)', () => {
