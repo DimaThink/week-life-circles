@@ -1,6 +1,6 @@
 import { App, TFile } from 'obsidian';
 import { Calendar, WEEKS_PER_YEAR, formatYMD, pad2 } from './calendar';
-import { Cell, CellMap, Settings } from './config';
+import { Cell, CellMap, CellShape, Settings } from './config';
 import { colorMap } from './squares';
 
 export interface GridHost {
@@ -81,10 +81,10 @@ const isDecadeStart = (yy: number): boolean => yy % 10 === 1;
 interface Shell { root: HTMLElement; headerTrack: HTMLElement; toolbar: HTMLElement; info: HTMLElement }
 
 /** Empty `el` and build the frame both grids share: sticky toolbar with title + counter. */
-function renderShell(el: HTMLElement, title: string, rootCls: string): Shell {
+function renderShell(el: HTMLElement, title: string, rootCls: string, shape: CellShape): Shell {
   el.empty();
   // Toolbar lives OUTSIDE the scroll area so it never scrolls off on a wide (phone) grid.
-  const outer = el.createDiv({ cls: 'wcg-outer' });
+  const outer = el.createDiv({ cls: shape === 'square' ? 'wcg-outer wcg-shape-square' : 'wcg-outer' });
   const toolbar = outer.createDiv({ cls: 'wcg-toolbar' });
   const titleWrap = toolbar.createDiv({ cls: 'wcg-title-wrap' });
   titleWrap.createDiv({ cls: 'wcg-title', text: title });
@@ -196,7 +196,7 @@ export async function renderWeekGrid(el: HTMLElement, host: GridHost): Promise<v
   if (cal === null) { renderNoBirthDate(el); return; }
 
   const { root, headerTrack, toolbar, info } = renderShell(
-    el, 'Life in weeks', host.transposed ? 'wcg-view-root wcg-transposed' : 'wcg-view-root');
+    el, 'Life in weeks', host.transposed ? 'wcg-view-root wcg-transposed' : 'wcg-view-root', host.settings.cellShape);
   const transposed = host.transposed;
   const rotateBtn = iconButton(
     toolbar,
@@ -266,7 +266,8 @@ export async function renderDayGrid(el: HTMLElement, host: GridHost): Promise<vo
   const cal = host.calendar;
   if (cal === null) { renderNoBirthDate(el); return; }
 
-  const { root, headerTrack, toolbar, info } = renderShell(el, 'Life in days', 'wcg-view-root wcg-day-mode');
+  const { root, headerTrack, toolbar, info } = renderShell(
+    el, 'Life in days', 'wcg-view-root wcg-day-mode', host.settings.cellShape);
   const todayBtn = iconButton(toolbar, ICON_TODAY, 'Scroll to today');
   rebuildButton(toolbar, 'Rebuild day cache', () => host.rebuildDayCache(), () => renderDayGrid(el, host));
 

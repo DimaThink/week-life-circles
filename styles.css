@@ -6,7 +6,7 @@
     background: var(--background-primary);
     --wcg-label-w: 42px;                                           /* frozen week-number column */
     --wcg-cell: 42px;                                              /* circle diameter (D) */
-    --wcg-pitch: 49px;                                             /* equal centre-to-centre distance to all 6 neighbours (S) */
+    --wcg-pitch: calc(var(--wcg-cell) * 49 / 42);                  /* equal centre-to-centre distance to all 6 neighbours (S); 49px at 42px */
     --wcg-vgap: calc(var(--wcg-pitch) - var(--wcg-cell));          /* row gap = S - D */
     --wcg-hgap: calc(var(--wcg-pitch) * 0.86603 - var(--wcg-cell));/* column gap so column pitch = S·√3/2 */
 }
@@ -348,6 +348,21 @@
         transition: none;
     }
 }
+/* ── Square view: a plain aligned grid like the classic poster ────────────────
+   Gap 4px both ways (= SQUARE_GAP in src/layout.ts). Rows are `cell` tall and
+   `vgap` apart, so the row stride is cell + 4px = pitch; each frozen label is
+   one pitch tall and centred on its row (2px over each edge), so the opaque
+   labels still tile into one gap-free strip. No stagger, so no label offset. */
+.wcg-outer.wcg-shape-square {
+    --wcg-pitch: calc(var(--wcg-cell) + 4px);
+    --wcg-vgap: 4px;
+    --wcg-hgap: 4px;
+}
+.wcg-shape-square .wcg-cell.wcg-col-offset { --wcg-shift: 0px; }
+.wcg-shape-square .wcg-ww-label { transform: none; }
+.wcg-shape-square .wcg-cell,
+.wcg-shape-square .wcg-link,
+.wcg-shape-square .wcg-cell img { border-radius: 6px; }
 /* ── Day-mode overrides ───────────────────────────────────────────────────────
    Day view uses the same cell size as the week view (42 px) — with only 10
    year-columns there's plenty of horizontal room, so big-and-tactile wins. */
