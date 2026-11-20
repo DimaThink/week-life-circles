@@ -103,6 +103,15 @@ export class WeekLifeCirclesSettingTab extends PluginSettingTab {
     addAge('Start age', 'startAge');
     addAge('End age', 'endAge');
 
+    new Setting(containerEl)
+      .setName('Cell shape')
+      .setDesc('Circles in a honeycomb, or squares in a plain grid like the classic poster.')
+      .addDropdown(dd => dd
+        .addOption('circle', 'Circles')
+        .addOption('square', 'Squares')
+        .setValue(s.cellShape)
+        .onChange(v => { s.cellShape = v === 'square' ? 'square' : 'circle'; void save(); }));
+
     addText('Week folder', 'weekFolder', folder(DEFAULT_SETTINGS.weekFolder));
     addText('Day folder', 'dayFolder', folder(DEFAULT_SETTINGS.dayFolder));
     addText('Day template path', 'dayTemplatePath', v => (v.trim() ? normalizePath(v.trim()) : ''),

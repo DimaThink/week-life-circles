@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { DEFAULT_SETTINGS, DEFAULT_SQUARES, normalizeSettings, parseBirthDate, encodeConfig, parseConfigPayload } from '../src/config';
+import type { Settings } from '../src/config';
 
 describe('DEFAULT_SETTINGS', () => {
   it('has sane defaults', () => {
@@ -96,5 +97,26 @@ describe('config code (encode/parse)', () => {
   it('rejects garbage / non-object payloads', () => {
     expect(() => parseConfigPayload('not a code')).toThrow();
     expect(() => parseConfigPayload(btoa('[1,2,3]'))).toThrow();
+  });
+});
+
+describe('cellShape', () => {
+  it('defaults to circle', () => {
+    expect(DEFAULT_SETTINGS.cellShape).toBe('circle');
+    expect(normalizeSettings({}).cellShape).toBe('circle');
+  });
+  it('keeps square, rejects garbage', () => {
+    expect(normalizeSettings({ cellShape: 'square' }).cellShape).toBe('square');
+    expect(normalizeSettings({ cellShape: 'hexagon' as never }).cellShape).toBe('circle');
+    expect(normalizeSettings({ cellShape: 3 as never }).cellShape).toBe('circle');
+  });
+  it('survives the config code round-trip', () => {
+    const s = normalizeSettings({ cellShape: 'square' });
+    expect(normalizeSettings(parseConfigPayload(encodeConfig(s))).cellShape).toBe('square');
+  });
+  it('an old config code without cellShape loads as circle', () => {
+    const old = { ...normalizeSettings({}) } as Partial<Settings>;
+    delete old.cellShape;
+    expect(normalizeSettings(parseConfigPayload(JSON.stringify(old))).cellShape).toBe('circle');
   });
 });
