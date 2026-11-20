@@ -1,7 +1,7 @@
 {
   "id": "week-life-circles",
   "name": "Week Life Circles",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "minAppVersion": "1.7.2",
   "description": "Life-in-weeks grid journal: one colored circle per week or day of your life, each linked to a note.",
   "author": "DimaThink",
