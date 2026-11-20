@@ -39,7 +39,9 @@ day or two). That is why the plugin needs your birth date before it shows anythi
 - **Circles or squares** — draw the grids as circles in a honeycomb, or as
   squares in a plain aligned grid like the classic "life in weeks" poster.
 - **Squares** — each note carries one colored square (or a small image, e.g. a
-  flag for a trip). The set of squares is yours to edit: add, remove, pick colors.
+  flag for a trip). The set of squares is yours to edit in the settings: rename,
+  recolor, reorder, delete, and upload images straight from your device (or pick
+  one already in your vault) — with a live preview in your cell shape.
 - **One-click notes** — clicking an empty circle opens a dialog: pick the square,
   optionally attach photos or videos, and the note is created from your template.
 - **Multi-week notes** — one note can cover several weeks (`03-05.28` in its
@@ -83,7 +85,7 @@ an embed: `![[england.png|14]]`.
 | Week folder / Day folder | Where week and day notes are stored. |
 | Week template path / Day template path | Optional path to a note used as the week or day template instead of the built-in one. The same placeholders work in it. |
 | Week template / Day template | Text of new notes. Placeholders: `{{ww}}`, `{{yy}}`, `{{square}}`, `{{date}}`, `{{photos}}` (week), `{{weekday}}` (day). The weekday is written in Obsidian's language. |
-| Squares | The list of squares: a name plus either a color or an image file in your vault. |
+| Squares | The list of squares, previewed in your cell shape. Each is a name plus a color, or an image. Rename, recolor, reorder (the first one is preselected for new notes) or delete them; **Replace image** uploads a new picture under the same file name, so existing notes keep working. **Add a square**: pick a color, or upload an image (shrunk to a small PNG and saved to your attachments folder) or choose a PNG/JPG already in your vault. |
 | Immich | Optional photo picker, see below. |
 | Configuration | **Export** copies all settings as one code; **Import** applies a pasted code, or fetches one from a URL you paste. Good for setting up a second device. |
 

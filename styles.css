@@ -455,13 +455,73 @@ body .wcg-sq-img img {
 .wcg-link,
 .wcg-swatch-dot { background: var(--wcg-color, transparent); }
 .wcg-swatch-dot.wcg-swatch-missing { background: var(--background-modifier-border); }
-.wcg-settings-swatch {
-    width: 24px;
-    height: 24px;
-    border-radius: 4px;
-    border: 1px solid var(--background-modifier-border);
+/* ── Settings: squares editor ─────────────────────────────────────────────────
+   Previews are drawn like grid cells: circle or rounded square, same contrast ring. */
+.wcg-sq-preview {
+    position: relative;
+    flex: 0 0 auto;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    overflow: hidden;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
     background: var(--wcg-color, transparent);
 }
+.wcg-sq-preview.is-square { border-radius: 5px; }
+.wcg-sq-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+.wcg-sq-preview::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-normal) 30%, transparent);
+    pointer-events: none;
+}
+.wcg-sq-preview.is-missing {
+    background: var(--background-secondary);
+    color: var(--text-error);
+    font-size: 13px;
+    font-weight: 700;
+}
+.wcg-sq-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 6px;
+    padding: 6px 0 14px;
+}
+.wcg-sq-strip-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    width: 52px;
+}
+.wcg-sq-strip-item .wcg-sq-preview { width: 36px; height: 36px; }
+.wcg-sq-strip-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    max-width: 52px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.wcg-sq-row-name,
+.wcg-sq-add .setting-item-name {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.wcg-sq-add-preview { display: inline-flex; }
+.wcg-sq-add-preview:empty { display: none; }
+.wcg-sq-name-input { width: 9em; }
 .wcg-fab svg { width: 24px; height: 24px; }
 /* ── Create dialogs ────────────────────────────────────────────────────────── */
 .wcg-field-label {
