@@ -2,6 +2,8 @@ import { App, TFile } from 'obsidian';
 import { Calendar, WEEKS_PER_YEAR, formatYMD, pad2 } from './calendar';
 import { Cell, CellMap, CellShape, Settings } from './config';
 import { colorMap } from './squares';
+import { dayLabel, isMonthStart } from './months';
+import { momentFmt } from './momentFmt';
 import { BASE_CELL, LABEL_W, columnPitch, isPageStart, pagedCellSize } from './layout';
 
 export interface GridHost {
@@ -337,10 +339,20 @@ export async function renderDayGrid(el: HTMLElement, host: GridHost): Promise<vo
   renderYearHeader(headerTrack, years, curYY);
   const wrap = root.createDiv({ cls: 'wcg-wrap' });
 
-  // 1 row per day-of-personal-year. Label = day number from birthday.
+  // 1 row per day-of-personal-year. Labels show the calendar date of the first
+  // column (the current personal year): day of month, or the month's short name
+  // on the 1st. Other columns may have their month starts one row off (leap
+  // years) — each cell marks its own month start, so the separators stay true.
+  const monthShort = (d: Date): string => momentFmt(d).format('MMM'); // in Obsidian's language
+  const labelYY = years[0];
+  const labelDays = cal.personalYearDays(labelYY);
   for (let doy = 1; doy <= 366; doy++) {
     const row = wrap.createDiv({ cls: 'wcg-row' + (doy === curDOY ? ' wcg-cur-week' : '') });
-    row.createDiv({ cls: 'wcg-ww-label', text: String(doy) });
+    const labelDate = doy <= labelDays ? cal.personalToDate(labelYY, doy) : null;
+    row.createDiv({
+      cls: 'wcg-ww-label' + (labelDate && isMonthStart(labelDate) ? ' wcg-month-label' : ''),
+      text: labelDate ? dayLabel(labelDate, monthShort) : '',
+    });
 
     for (const yy of years) {
       const colOff = (yy - startYY) % 2 === 1;
@@ -350,7 +362,8 @@ export async function renderDayGrid(el: HTMLElement, host: GridHost): Promise<vo
         cell = row.createDiv({ cls: 'wcg-cell wcg-cell-empty' + (colOff ? ' wcg-col-offset' : '') });
       } else {
         const d = cells[String(yy)]?.[String(doy)];
-        const cls = cellClass(colOff, yy === curYY && doy === curDOY, !!d, isPast(yy, doy));
+        let cls = cellClass(colOff, yy === curYY && doy === curDOY, !!d, isPast(yy, doy));
+        if (isMonthStart(cal.personalToDate(yy, doy))) cls += ' wcg-month-start';
         cell = row.createDiv({ cls, attr: { 'data-yy': String(yy), 'data-doy': String(doy) } });
         if (d) {
           fillLink(cell, d);

@@ -1,15 +1,12 @@
-import { App, Modal, Notice, Setting, TFile, moment } from 'obsidian';
+import { App, Modal, Notice, Setting, TFile } from 'obsidian';
 import type { Settings } from '../config';
 import { Calendar, formatYMD, pad2, weekOfDoy } from '../calendar';
 import type { ImmichClient } from '../immich';
 import { renderDayTemplate } from '../templates';
 import { ensureFolder } from '../vaultUtil';
+import { momentFmt } from '../momentFmt';
 import { defaultSquareKey, renderSquarePicker } from './swatches';
 
-// Obsidian re-exports `moment`, but under strict type-checking its type can
-// resolve to `any` (triggers @typescript-eslint/no-unsafe-*). Pin a minimal
-// typed view so weekday formatting stays type-safe in every environment.
-const momentFmt = moment as unknown as (date: Date) => { format(fmt: string): string };
 
 export interface ModalHost {
   readonly app: App;

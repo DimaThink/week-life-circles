@@ -383,6 +383,25 @@
     visibility: hidden;
     pointer-events: none;
 }
+/* Months: a thin line above the cell that is a month's 1st, spanning the column
+   pitch and sitting in the middle of the row gap. Drawn per cell, so it follows
+   the column's stagger and a leap year's one-row shift. The cell itself must not
+   clip it; round clipping of the content is done by .wcg-link and the image. */
+.wcg-day-mode .wcg-cell.wcg-month-start { overflow: visible; }
+.wcg-day-mode .wcg-cell.wcg-month-start::before {
+    content: '';
+    position: absolute;
+    left: calc(var(--wcg-hgap) / -2);
+    right: calc(var(--wcg-hgap) / -2);
+    top: calc(var(--wcg-vgap) / -2 - 0.5px);
+    height: 1px;
+    background: var(--background-modifier-border-hover);
+    pointer-events: none;
+}
+.wcg-month-label {
+    color: var(--text-muted);
+    font-weight: 600;
+}
 /* Link text-decoration must beat Obsidian's `a:hover` underline without !important */
 .wcg-cell .wcg-link,
 .wcg-cell .wcg-link:hover { text-decoration: none; }
