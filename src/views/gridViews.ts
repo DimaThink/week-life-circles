@@ -19,8 +19,9 @@ export abstract class GridView extends ItemView {
   async onOpen(): Promise<void> {
     // Width changes (phone rotation, split pane, sidebar) flip decade paging on/off
     // and resize the paged cells. Use this window's constructor so popouts work too.
-    const win = this.contentEl.win as Window & typeof globalThis;
-    this.resizeObserver = new win.ResizeObserver(() => {
+    const win = this.contentEl.win;
+    const Observer = (win as unknown as { ResizeObserver: typeof ResizeObserver }).ResizeObserver;
+    this.resizeObserver = new Observer(() => {
       if (this.resizeFrame) return;
       this.resizeFrame = win.requestAnimationFrame(() => {
         this.resizeFrame = 0;

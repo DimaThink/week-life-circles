@@ -26,7 +26,7 @@ export class WeekLifeCirclesSettingTab extends PluginSettingTab {
     this.host = plugin;
     this.squares = new SquareEditor({
       app,
-      settings: plugin.settings,
+      settings: this.host.settings,
       save: () => this.host.saveSettings(),
     });
   }
