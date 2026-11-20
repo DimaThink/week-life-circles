@@ -4,8 +4,14 @@ import { squareClass } from './squares';
 // Extensions that embed as images (get a |600 display-width suffix); others embed bare
 export const PHOTO_IMAGE_EXTS = new Set(['jpg', 'jpeg', 'png', 'webp']);
 
+/**
+ * How a note references a square. Colour squares, and image squares converted
+ * from colour (their picture isn't named after the key), are a class span; a
+ * plain image square is an embed of its own file. Both read back by key.
+ */
 export function squareMarkup(square: string, squares: SquareDef[]): string {
-  return squares.some(q => q.key === square && q.color)
+  const q = squares.find(t => t.key === square);
+  return q && (q.color || (q.image && q.image !== q.key))
     ? `<span class="sq ${squareClass(square)}"></span>`
     : `![[${square}|14]]`;
 }

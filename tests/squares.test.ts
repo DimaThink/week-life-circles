@@ -47,6 +47,22 @@ describe('decorateSquares', () => {
     decorateSquares(root([span], []), sample);
     expect(span.props['--wcg-sq-color']).toBeUndefined();
   });
+
+  it('a class span of an image square gets its picture as background, not a colour', () => {
+    const span = new FakeEl(['sq', 'sq-work']);
+    span.props['--wcg-sq-color'] = '#4A4A4A';
+    const squares = [{ key: 'work.png', name: 'W', color: null, image: 'work-2.png' }];
+    decorateSquares(root([span], []), squares, n => (n === 'work-2.png' ? 'app://x/work-2.png?1' : null));
+    expect(span.props['--wcg-sq-color']).toBeUndefined();
+    expect(span.props['--wcg-sq-img']).toBe('url("app://x/work-2.png?1")');
+  });
+  it('turning it back into a colour drops the picture', () => {
+    const span = new FakeEl(['sq', 'sq-work']);
+    span.props['--wcg-sq-img'] = 'url("x")';
+    decorateSquares(root([span], []), [{ key: 'work.png', name: 'W', color: '#123456' }]);
+    expect(span.props['--wcg-sq-img']).toBeUndefined();
+    expect(span.props['--wcg-sq-color']).toBe('#123456');
+  });
 });
 
 describe('colorMap', () => {

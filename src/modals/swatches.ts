@@ -1,5 +1,6 @@
 import type { App } from 'obsidian';
 import type { Settings, SquareDef } from '../config';
+import { squareImage } from '../squares';
 
 /** The square preselected in the create dialogs. */
 export function defaultSquareKey(settings: Settings): string {
@@ -24,7 +25,7 @@ export function renderSquarePicker(
     if (type.color) {
       dot.setCssProps({ '--wcg-color': type.color });
     } else {
-      const f = app.metadataCache.getFirstLinkpathDest(type.key, '');
+      const f = app.metadataCache.getFirstLinkpathDest(squareImage(type), '');
       if (f) dot.createEl('img', { attr: { src: app.vault.getResourcePath(f) } });
       else dot.addClass('wcg-swatch-missing');
     }

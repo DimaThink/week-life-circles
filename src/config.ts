@@ -1,4 +1,9 @@
-export interface SquareDef { key: string; name: string; color: string | null } // color null = image square
+/**
+ * A square. `key` is its identity in notes and never changes. color null = image
+ * square; its picture is the vault file `image`, or `key` itself when absent
+ * (a square converted from colour to image keeps its key and gets an `image`).
+ */
+export interface SquareDef { key: string; name: string; color: string | null; image?: string }
 
 /** One grid cell: the square shown and the note it opens. */
 export interface Cell { square: string | null; path: string }
@@ -118,13 +123,15 @@ function normalizeSquares(v: unknown): SquareDef[] {
   const out: SquareDef[] = [];
   for (const q of v as unknown[]) {
     if (q === null || typeof q !== 'object') continue;
-    const { key, name, color } = q as Record<string, unknown>;
+    const { key, name, color, image } = q as Record<string, unknown>;
     if (typeof key !== 'string' || key === '') continue;
-    out.push({
+    const sq: SquareDef = {
       key,
       name: typeof name === 'string' ? name : key,
       color: typeof color === 'string' && color !== '' ? color : null,
-    });
+    };
+    if (sq.color === null && typeof image === 'string' && image !== '') sq.image = image;
+    out.push(sq);
   }
   return out;
 }

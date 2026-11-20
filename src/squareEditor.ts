@@ -1,5 +1,6 @@
 import { App, FuzzySuggestModal, Modal, Notice, Setting, TFile, normalizePath } from 'obsidian';
 import type { CellShape, SquareDef } from './config';
+import { squareImage } from './squares';
 import {
   SQUARE_IMAGE_MAX, colorSquareKey, fitWithin, isHexColor, isSquareImageName, moveItem, slugify, squareClassClash,
   takenImageNames, uniqueImageName,
@@ -15,13 +16,13 @@ export interface SquareEditorHost {
 
 /** A square's look, drawn the way the grid draws it (circle or rounded square, contrast ring). */
 export function renderSquarePreview(
-  app: App, parent: HTMLElement, sq: Pick<SquareDef, 'key' | 'color'>, shape: CellShape, cls = '',
+  app: App, parent: HTMLElement, sq: Pick<SquareDef, 'key' | 'color' | 'image'>, shape: CellShape, cls = '',
 ): HTMLElement {
   const el = parent.createDiv({ cls: `wcg-sq-preview${shape === 'square' ? ' is-square' : ''}${cls ? ' ' + cls : ''}` });
   if (sq.color) {
     el.setCssProps({ '--wcg-color': sq.color });
   } else {
-    const f = app.metadataCache.getFirstLinkpathDest(sq.key, '');
+    const f = app.metadataCache.getFirstLinkpathDest(squareImage(sq as SquareDef), '');
     if (f) el.createEl('img', { attr: { src: app.vault.getResourcePath(f), alt: '' } });
     else { el.addClass('is-missing'); el.setText('?'); }
   }
@@ -115,6 +116,28 @@ class ConfirmModal extends Modal {
   onClose(): void { this.contentEl.empty(); }
 }
 
+/** Turn a colour square into an image square: upload a picture or pick one from the vault. */
+class ToImageModal extends Modal {
+  constructor(app: App, private readonly name: string,
+    private readonly upload: (anchor: HTMLElement) => Promise<boolean>, private readonly fromVault: () => void) {
+    super(app);
+  }
+  onOpen(): void {
+    this.setTitle(`Use an image for "${this.name}"`);
+    this.contentEl.createEl('p', {
+      text: 'Notes that already use this square keep pointing at it and will show the image instead of the colour.',
+      cls: 'setting-item-description',
+    });
+    new Setting(this.contentEl)
+      .addButton(b => b.setButtonText('From vault…').onClick(() => { this.close(); this.fromVault(); }))
+      // the file picker opens straight from this tap (phones require that); close once a picture is in
+      .addButton(b => b.setButtonText('Upload…').setCta().onClick(() => {
+        void this.upload(this.contentEl).then(done => { if (done) this.close(); });
+      }));
+  }
+  onClose(): void { this.contentEl.empty(); }
+}
+
 type Pending = { kind: 'upload'; bytes: ArrayBuffer; url: string } | { kind: 'vault'; file: TFile } | null;
 
 /**
@@ -182,10 +205,10 @@ export class SquareEditor {
     const row = new Setting(parent).setClass('wcg-sq-row');
     const preview = renderSquarePreview(app, row.nameEl, q, settings.cellShape);
     row.nameEl.addClass('wcg-sq-row-name');
-    const file = q.color ? null : app.metadataCache.getFirstLinkpathDest(q.key, '');
+    const file = q.color ? null : app.metadataCache.getFirstLinkpathDest(squareImage(q), '');
     row.setDesc(q.color ? (i === 0 ? 'Colour · default for new notes' : 'Colour')
       : file ? `Image · ${file.path}${i === 0 ? ' · default for new notes' : ''}`
-        : `Image missing: ${q.key} — upload one to restore it`);
+        : `Image missing: ${squareImage(q)} — upload one to restore it`);
 
     row.addText(t => {
       t.setPlaceholder('Name').setValue(q.name);
@@ -222,6 +245,25 @@ export class SquareEditor {
         }));
     }
 
+    // switch type, keeping the key: existing notes follow the square to its new look
+    if (q.color) {
+      row.addExtraButton(b => b.setIcon('image').setTooltip('Use an image instead of the colour').onClick(() => {
+        new ToImageModal(app, q.name, anchor => this.convertToUpload(q, anchor), () => {
+          new VaultImageModal(app, f => {
+            q.color = null;
+            if (f.name === q.key) delete q.image; else q.image = f.name;
+            void this.saveNow().then(() => this.render());
+          }).open();
+        }).open();
+      }));
+    } else {
+      row.addExtraButton(b => b.setIcon('palette').setTooltip('Use a colour instead of the image').onClick(() => {
+        q.color = '#9F8CAE';
+        delete q.image; // the picture file itself stays in the vault
+        void this.saveNow().then(() => this.render());
+      }));
+    }
+
     row.addExtraButton(b => b.setIcon('arrow-up').setTooltip('Move up').setDisabled(i === 0)
       .onClick(() => { void this.move(i, i - 1); }));
     row.addExtraButton(b => b.setIcon('arrow-down').setTooltip('Move down').setDisabled(i === settings.squares.length - 1)
@@ -245,20 +287,42 @@ export class SquareEditor {
     this.render();
   }
 
-  /** New pixels for an image square, written under its existing name (so notes keep resolving). */
+  /** Colour square → image square from an uploaded picture; true once converted. */
+  private async convertToUpload(q: SquareDef, anchor: HTMLElement): Promise<boolean> {
+    const { app, settings } = this.host;
+    const picked = await pickImageFile(anchor);
+    if (!picked) return false;
+    try {
+      const bytes = await toSquareImage(picked, 'image/png');
+      const taken = takenImageNames(settings.squares.map(s => s.key), app.vault.getFiles().map(f => f.name));
+      const file = await createSquareImage(app, uniqueImageName(slugify(q.name), taken), bytes);
+      q.color = null;
+      q.image = file.name;
+      await this.saveNow();
+      this.render();
+      return true;
+    } catch (e) {
+      console.error('week-life-circles: square image upload failed', e);
+      new Notice(`Could not use that image: ${(e as Error).message}`);
+      return false;
+    }
+  }
+
+  /** New pixels for an image square, written under its existing file name (so notes keep resolving). */
   private async replaceImage(q: SquareDef, anchor: HTMLElement): Promise<void> {
     const { app } = this.host;
-    const existing = app.metadataCache.getFirstLinkpathDest(q.key, '');
-    if (!existing && q.key.includes('/')) {
-      new Notice(`"${q.key}" names a folder too, so it can't be restored by upload. Add a new square instead.`);
+    const pic = squareImage(q);
+    const existing = app.metadataCache.getFirstLinkpathDest(pic, '');
+    if (!existing && pic.includes('/')) {
+      new Notice(`"${pic}" names a folder too, so it can't be restored by upload. Add a new square instead.`);
       return;
     }
     const picked = await pickImageFile(anchor);
     if (!picked) return;
     try {
-      const bytes = await toSquareImage(picked, q.key.endsWith('.jpg') ? 'image/jpeg' : 'image/png');
+      const bytes = await toSquareImage(picked, pic.endsWith('.jpg') ? 'image/jpeg' : 'image/png');
       if (existing) await app.vault.modifyBinary(existing, bytes);
-      else await createSquareImage(app, q.key, bytes);
+      else await createSquareImage(app, pic, bytes);
       await this.saveNow(); // re-render open grids so they pick up the new image
       new Notice(`Image for "${q.name}" updated.`);
       this.render();

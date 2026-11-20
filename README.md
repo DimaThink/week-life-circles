@@ -85,7 +85,7 @@ an embed: `![[england.png|14]]`.
 | Week folder / Day folder | Where week and day notes are stored. |
 | Week template path / Day template path | Optional path to a note used as the week or day template instead of the built-in one. The same placeholders work in it. |
 | Week template / Day template | Text of new notes. Placeholders: `{{ww}}`, `{{yy}}`, `{{square}}`, `{{date}}`, `{{photos}}` (week), `{{weekday}}` (day). The weekday is written in Obsidian's language. |
-| Squares | The list of squares, previewed in your cell shape. Each is a name plus a color, or an image. Rename, recolor, reorder (the first one is preselected for new notes) or delete them; **Replace image** uploads a new picture under the same file name, so existing notes keep working. **Add a square**: pick a color, or upload an image (shrunk to a small PNG and saved to your attachments folder) or choose a PNG/JPG already in your vault. |
+| Squares | The list of squares, previewed in your cell shape. Each is a name plus a color, or an image. Rename, recolor, reorder (the first one is preselected for new notes) or delete them; **Replace image** uploads a new picture under the same file name, so existing notes keep working. A colour square can become an image square (upload or pick a picture) and back again; notes that already use it follow along and show its new look. **Add a square**: pick a color, or upload an image (shrunk to a small PNG and saved to your attachments folder) or choose a PNG/JPG already in your vault. |
 | Immich | Optional photo picker, see below. |
 | Configuration | **Export** copies all settings as one code; **Import** applies a pasted code, or fetches one from a URL you paste. Good for setting up a second device. |
 

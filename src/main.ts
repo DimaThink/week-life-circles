@@ -3,7 +3,7 @@ import type { WorkspaceLeaf } from 'obsidian';
 import { CellMap, Settings, DEFAULT_SETTINGS, normalizeSettings, parseBirthDate } from './config';
 import { migrate, SavedData } from './migrate';
 import { Calendar, WEEKS_PER_YEAR } from './calendar';
-import { decorateSquares } from './squares';
+import { decorateSquares, squareImage } from './squares';
 import { parseWeekFilename, readWeekData, weekNotePath } from './weekFiles';
 import { parseDayFilename, readDayData } from './dayFiles';
 import { DAY_VIEW_TYPE, DayCalendarView, GridView, WEEK_VIEW_TYPE, WeekCalendarView } from './views/gridViews';
@@ -118,7 +118,7 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
     // Clicking a colour square in reading view jumps to the grid cell
     this.registerMarkdownPostProcessor((el, ctx) => {
       const target = parseWeekFilename(ctx.sourcePath.split('/').pop() ?? '');
-      decorateSquares(el, this.settings.squares);
+      decorateSquares(el, this.settings.squares, this.squareImageUrl);
       el.querySelectorAll('span.sq').forEach(span =>
         span.addEventListener('click', e => {
           e.preventDefault(); e.stopPropagation();
@@ -133,7 +133,7 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
       const img = t?.instanceOf(HTMLImageElement) ? t : t?.matches?.('.internal-embed') ? t.querySelector('img') : null;
       if (!img) return;
       const name = (img.getAttribute('alt') || '').trim();
-      if (!this.settings.squares.some(s => s.key === name && !s.color)) return;
+      if (!this.settings.squares.some(s => !s.color && (s.key === name || squareImage(s) === name))) return;
       e.preventDefault();
       e.stopPropagation();
       const file = this.app.workspace.getActiveFile();
@@ -188,7 +188,7 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
     this.squareObserver = new MutationObserver(records => {
       for (const r of records) {
         r.addedNodes.forEach(n => {
-          if (n.nodeType === Node.ELEMENT_NODE) decorateSquares(n as HTMLElement, this.settings.squares);
+          if (n.nodeType === Node.ELEMENT_NODE) decorateSquares(n as HTMLElement, this.settings.squares, this.squareImageUrl);
         });
       }
     });
@@ -196,8 +196,14 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
   }
 
   private refreshSquares(): void {
-    decorateSquares(activeDocument.body, this.settings.squares);
+    decorateSquares(activeDocument.body, this.settings.squares, this.squareImageUrl);
   }
+
+  /** Resource URL of a vault image by name (for image squares drawn as a class span in notes). */
+  private readonly squareImageUrl = (name: string): string | null => {
+    const f = this.app.metadataCache.getFirstLinkpathDest(name, '');
+    return f ? this.app.vault.getResourcePath(f) : null;
+  };
 
   // ── Persistence / settings ──────────────────────────────────────────────
 

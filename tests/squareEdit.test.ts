@@ -3,6 +3,9 @@ import {
   colorSquareKey, fitWithin, isHexColor, isSquareImageName, moveItem, slugify, squareClassClash, takenImageNames, uniqueImageName,
 } from '../src/squareEdit';
 import { extractSquares } from '../src/weekFiles';
+import { squareImage } from '../src/squares';
+import { squareMarkup } from '../src/templates';
+import { encodeConfig, normalizeSettings, parseConfigPayload } from '../src/config';
 
 describe('slugify', () => {
   it('plain lowercase words joined by dashes', () => {
@@ -88,5 +91,41 @@ describe('square key collisions', () => {
     expect(uniqueImageName('trip', taken)).toBe('trip-2.png');
     expect(uniqueImageName('custom-x-1', taken)).toBe('custom-x-1-2.png');
     expect(squareClassClash(uniqueImageName('work', taken), ['work.png'])).toBe(false);
+  });
+});
+
+describe('converting a square between colour and image', () => {
+  it('the image file defaults to the key; an explicit image wins', () => {
+    expect(squareImage({ key: 'flag.png', name: 'F', color: null })).toBe('flag.png');
+    expect(squareImage({ key: 'work.png', name: 'W', color: null, image: 'work-2.png' })).toBe('work-2.png');
+  });
+  it('settings keep the image file of an image square, drop junk', () => {
+    const [a, b, c] = normalizeSettings({ squares: [
+      { key: 'work.png', name: 'W', color: null, image: 'work-2.png' },
+      { key: 'rest.png', name: 'R', color: '#fff', image: 'x.png' }, // colour square: image ignored
+      { key: 'flag.png', name: 'F', color: null, image: 5 as never },
+    ] }).squares;
+    expect(a).toEqual({ key: 'work.png', name: 'W', color: null, image: 'work-2.png' });
+    expect(b).toEqual({ key: 'rest.png', name: 'R', color: '#fff' });
+    expect(c).toEqual({ key: 'flag.png', name: 'F', color: null });
+  });
+  it('survives the config code', () => {
+    const s = normalizeSettings({ squares: [{ key: 'work.png', name: 'W', color: null, image: 'work-2.png' }] });
+    expect(normalizeSettings(parseConfigPayload(encodeConfig(s))).squares[0].image).toBe('work-2.png');
+  });
+  it('markup: a converted square keeps writing its class, so every note reads it back the same way', () => {
+    const squares = [
+      { key: 'work.png', name: 'W', color: null, image: 'work-2.png' }, // colour → image
+      { key: 'flag.png', name: 'F', color: '#123456' },                  // image → colour
+      { key: 'trip.png', name: 'T', color: null },                       // plain image square
+    ];
+    expect(squareMarkup('work.png', squares)).toBe('<span class="sq sq-work"></span>');
+    expect(squareMarkup('flag.png', squares)).toBe('<span class="sq sq-flag"></span>');
+    expect(squareMarkup('trip.png', squares)).toBe('![[trip.png|14]]');
+    for (const k of ['work.png', 'flag.png', 'trip.png']) {
+      expect(extractSquares(squareMarkup(k, squares), squares.map(q => q.key))).toEqual([k]);
+    }
+    // old notes of the converted squares still read back
+    expect(extractSquares('![[flag.png|14]]', squares.map(q => q.key))).toEqual(['flag.png']);
   });
 });

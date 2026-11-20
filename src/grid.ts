@@ -1,7 +1,7 @@
 import { App, TFile } from 'obsidian';
 import { Calendar, WEEKS_PER_YEAR, formatYMD, pad2 } from './calendar';
 import { Cell, CellMap, CellShape, Settings } from './config';
-import { colorMap } from './squares';
+import { colorMap, squareImage } from './squares';
 import { dayLabel, isMonthStart } from './months';
 import { momentFmt } from './momentFmt';
 import { BASE_CELL, LABEL_W, isPageStart, pageTarget, pagedCellSize, swipeStep } from './layout';
@@ -292,6 +292,7 @@ function cellClass(colOffset: boolean, isCur: boolean, filled: boolean, past: bo
 /** Returns a function that fills a cell with its link (colour or image square) and click-to-open. */
 function linkFiller(host: GridHost): (cell: HTMLElement, d: Cell) => void {
   const colors = colorMap(host.settings.squares);
+  const pictureOf = new Map(host.settings.squares.filter(q => !q.color).map(q => [q.key, squareImage(q)]));
   const imageUrls = new Map<string, string | null>();
   // Only used for image-based squares (flags, photos, etc.)
   const imageUrl = (key: string): string | null => {
@@ -315,7 +316,7 @@ function linkFiller(host: GridHost): (cell: HTMLElement, d: Cell) => void {
     if (color) {
       a.setCssProps({ '--wcg-color': color });
     } else {
-      const url = imageUrl(d.square);
+      const url = imageUrl(pictureOf.get(d.square) ?? d.square);
       if (url) a.createEl('img', { attr: { src: url, loading: 'lazy' } });
     }
   };
