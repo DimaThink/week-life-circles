@@ -3,6 +3,7 @@
     flex-direction: column;
     height: 100%;
     width: 100%;
+    background: var(--background-primary);
     --wcg-label-w: 42px;                                           /* frozen week-number column */
     --wcg-cell: 42px;                                              /* circle diameter (D) */
     --wcg-pitch: 49px;                                             /* equal centre-to-centre distance to all 6 neighbours (S) */
@@ -15,6 +16,10 @@
     width: 100%;
     overflow: auto;
     overscroll-behavior: contain;
+    /* Pan sideways in whole columns: a column is never left half-hidden under
+       the frozen week labels (that showed as crescent slivers). */
+    scroll-snap-type: x proximity;
+    scroll-padding-left: var(--wcg-label-w);
     padding: 0 16px 40px 0;
     box-sizing: border-box;
 }
@@ -25,7 +30,7 @@
     z-index: 1;
     flex: 0 0 auto;
     overflow: hidden;
-    padding-top: 10px;
+    padding-top: 4px;
     background: var(--background-primary);
     border-bottom: 1px solid var(--background-modifier-border);
     box-shadow: 0 10px 18px -16px rgba(0, 0, 0, 0.55);
@@ -67,7 +72,7 @@
     pointer-events: none;
 }
 .wcg-header {
-    height: 48px;
+    height: 24px;
     align-items: flex-end;
     padding-bottom: 4px;
 }
@@ -151,6 +156,9 @@
     align-items: center;
     justify-content: flex-end;
     background: var(--background-primary);
+    /* paint the background 14px above the box too: closes sub-pixel gaps between
+       rows and the band above the first row, so no cells show through */
+    box-shadow: 0 -14px 0 0 var(--background-primary);
 }
 .wcg-cur-week .wcg-ww-label {
     color: var(--interactive-accent);
@@ -177,6 +185,7 @@
     border-left: 1px solid var(--background-modifier-border);
 }
 .wcg-cell {
+    scroll-snap-align: start;
     width: var(--wcg-cell);
     min-width: var(--wcg-cell);
     height: var(--wcg-cell);
