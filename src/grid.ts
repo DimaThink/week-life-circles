@@ -78,21 +78,26 @@ export function flashCell(cell: HTMLElement): void {
 
 const isDecadeStart = (yy: number): boolean => yy % 10 === 1;
 
-interface Shell { root: HTMLElement; stickyHeader: HTMLElement; toolbar: HTMLElement; info: HTMLElement }
+interface Shell { root: HTMLElement; headerTrack: HTMLElement; toolbar: HTMLElement; info: HTMLElement }
 
 /** Empty `el` and build the frame both grids share: sticky toolbar with title + counter. */
 function renderShell(el: HTMLElement, title: string, rootCls: string): Shell {
   el.empty();
-  // Toolbar lives OUTSIDE the scroll area so it never scrolls off on a wide
-  // (phone) grid; only the year-label row scrolls+sticks inside `root`.
+  // Toolbar lives OUTSIDE the scroll area so it never scrolls off on a wide (phone) grid.
   const outer = el.createDiv({ cls: 'wcg-outer' });
   const toolbar = outer.createDiv({ cls: 'wcg-toolbar' });
   const titleWrap = toolbar.createDiv({ cls: 'wcg-title-wrap' });
   titleWrap.createDiv({ cls: 'wcg-title', text: title });
   const info = titleWrap.createSpan({ cls: 'wcg-cache-info' });
+  // Column labels sit OUTSIDE the scroller (position: sticky let cells peek
+  // above it on iOS) and slide sideways in step with the grid's scroll.
+  const headerViewport = outer.createDiv({ cls: 'wcg-header-viewport' });
+  const headerTrack = headerViewport.createDiv({ cls: 'wcg-header-track' });
   const root = outer.createDiv({ cls: rootCls });
-  const stickyHeader = root.createDiv({ cls: 'wcg-sticky-header' });
-  return { root, stickyHeader, toolbar, info };
+  root.addEventListener('scroll', () => {
+    headerTrack.setCssProps({ '--wcg-scroll-x': `${-root.scrollLeft}px` });
+  }, { passive: true });
+  return { root, headerTrack, toolbar, info };
 }
 
 function renderNoBirthDate(el: HTMLElement): void {
@@ -135,8 +140,8 @@ function countCells(cells: CellMap): number {
 }
 
 /** Header row of personal-year labels (the columns of the default week grid and of the day grid). */
-function renderYearHeader(stickyHeader: HTMLElement, years: number[], curYY: number | null): void {
-  const header = stickyHeader.createDiv({ cls: 'wcg-row wcg-header' });
+function renderYearHeader(headerTrack: HTMLElement, years: number[], curYY: number | null): void {
+  const header = headerTrack.createDiv({ cls: 'wcg-row wcg-header' });
   header.createDiv({ cls: 'wcg-ww-label' });
   for (const yy of years) {
     let cls = 'wcg-year-label';
@@ -190,7 +195,8 @@ export async function renderWeekGrid(el: HTMLElement, host: GridHost): Promise<v
   const cal = host.calendar;
   if (cal === null) { renderNoBirthDate(el); return; }
 
-  const { root, stickyHeader, toolbar, info } = renderShell(el, 'Life in weeks', 'wcg-view-root');
+  const { root, headerTrack, toolbar, info } = renderShell(
+    el, 'Life in weeks', host.transposed ? 'wcg-view-root wcg-transposed' : 'wcg-view-root');
   const transposed = host.transposed;
   const rotateBtn = iconButton(
     toolbar,
@@ -229,7 +235,7 @@ export async function renderWeekGrid(el: HTMLElement, host: GridHost): Promise<v
 
   if (!transposed) {
     // Default: rows = weeks, columns = years
-    renderYearHeader(stickyHeader, years, curYY);
+    renderYearHeader(headerTrack, years, curYY);
     for (const ww of weeks) {
       const row = wrap.createDiv({ cls: 'wcg-row' + (ww === curWW ? ' wcg-cur-week' : '') });
       row.createDiv({ cls: 'wcg-ww-label', text: pad2(ww) });
@@ -240,7 +246,7 @@ export async function renderWeekGrid(el: HTMLElement, host: GridHost): Promise<v
     }
   } else {
     // Transposed: rows = years, columns = weeks
-    const header = stickyHeader.createDiv({ cls: 'wcg-row wcg-header' });
+    const header = headerTrack.createDiv({ cls: 'wcg-row wcg-header' });
     header.createDiv({ cls: 'wcg-ww-label' });
     for (const ww of weeks) {
       header.createDiv({ cls: 'wcg-year-label' + (ww === curWW ? ' wcg-cur-year' : ''), text: pad2(ww) });
@@ -260,7 +266,7 @@ export async function renderDayGrid(el: HTMLElement, host: GridHost): Promise<vo
   const cal = host.calendar;
   if (cal === null) { renderNoBirthDate(el); return; }
 
-  const { root, stickyHeader, toolbar, info } = renderShell(el, 'Life in days', 'wcg-view-root wcg-day-mode');
+  const { root, headerTrack, toolbar, info } = renderShell(el, 'Life in days', 'wcg-view-root wcg-day-mode');
   const todayBtn = iconButton(toolbar, ICON_TODAY, 'Scroll to today');
   rebuildButton(toolbar, 'Rebuild day cache', () => host.rebuildDayCache(), () => renderDayGrid(el, host));
 
@@ -284,7 +290,7 @@ export async function renderDayGrid(el: HTMLElement, host: GridHost): Promise<vo
     return yy < curYY || (yy === curYY && doy < curDOY);
   };
 
-  renderYearHeader(stickyHeader, years, curYY);
+  renderYearHeader(headerTrack, years, curYY);
   const wrap = root.createDiv({ cls: 'wcg-wrap' });
 
   // 1 row per day-of-personal-year. Label = day number from birthday.
@@ -322,9 +328,4 @@ export async function renderDayGrid(el: HTMLElement, host: GridHost): Promise<vo
     const cell = todayCell();
     if (cell) flashCell(cell);
   });
-
-  // Wait two frames so the grid has actually laid out before we scroll
-  window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
-    todayCell()?.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'center' });
-  }));
 }

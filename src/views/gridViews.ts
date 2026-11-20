@@ -18,8 +18,19 @@ export abstract class GridView extends ItemView {
     await this.refresh();
   }
 
+  /**
+   * Re-render, keeping the scroll position when the layout is unchanged (e.g.
+   * after creating a note); on first open or a layout switch, centre on today.
+   */
   refresh(): Promise<void> {
-    this.rendered = this.render();
+    const prev = this.contentEl.querySelector<HTMLElement>('.wcg-view-root');
+    const keep = prev ? { cls: prev.className, left: prev.scrollLeft, top: prev.scrollTop } : null;
+    this.rendered = this.render().then(() => {
+      const root = this.contentEl.querySelector<HTMLElement>('.wcg-view-root');
+      if (!root) return;
+      if (keep && keep.cls === root.className) root.scrollTo(keep.left, keep.top);
+      else root.querySelector<HTMLElement>('.wcg-cur-cell')?.scrollIntoView({ block: 'center', inline: 'center' });
+    });
     return this.rendered;
   }
 
