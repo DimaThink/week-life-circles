@@ -33,7 +33,11 @@ day or two). That is why the plugin needs your birth date before it shows anythi
 
 - **Week grid** — every week of your life from a start age to an end age, as a
   staggered grid of circles. The current week pulses. Rows and columns can be swapped.
-- **Day grid** — the next ten personal years, one circle per day.
+- **Day grid** — the next ten personal years, one circle per day. The row
+  labels show the calendar date (the month's short name on the 1st), and a thin
+  line marks where each calendar month starts in every column.
+- **Circles or squares** — draw the grids as circles in a honeycomb, or as
+  squares in a plain aligned grid like the classic "life in weeks" poster.
 - **Squares** — each note carries one colored square (or a small image, e.g. a
   flag for a trip). The set of squares is yours to edit: add, remove, pick colors.
 - **One-click notes** — clicking an empty circle opens a dialog: pick the square,
@@ -41,7 +45,13 @@ day or two). That is why the plugin needs your birth date before it shows anythi
 - **Multi-week notes** — one note can cover several weeks (`03-05.28` in its
   first lines, with one square per week).
 - **Templates** — the week and day note templates are plain text in the settings.
-- **Works on mobile** — including a floating button to open the grid.
+- **Works on mobile** — including a floating button to open the grid. On a
+  narrow screen the year columns page by decade: swipe sideways to flip exactly
+  ten years (21–30, 31–40, …), scroll up and down as usual. The cells shrink a
+  little so a whole decade fits the screen.
+- **Follows your theme** — light or dark; every filled square has a subtle
+  contrasting ring, so white squares stay visible on a light background and
+  black ones on a dark background.
 - **Optional Immich photo picker** — see below. Off by default.
 
 ## Getting started
@@ -69,6 +79,7 @@ an embed: `![[england.png|14]]`.
 | --- | --- |
 | Birth date | Anchor of the whole grid. Nothing is shown until it is set. |
 | Start age / End age | First and last personal year shown in the week grid. |
+| Cell shape | **Circles** (a honeycomb, the default) or **Squares** (a plain aligned grid). Applies to both grids. |
 | Week folder / Day folder | Where week and day notes are stored. |
 | Day template path | Optional path to a note used as the day template instead of the built-in one. The same placeholders work in it. |
 | Week template / Day template | Text of new notes. Placeholders: `{{ww}}`, `{{yy}}`, `{{square}}`, `{{date}}`, `{{photos}}` (week), `{{weekday}}` (day). The weekday is written in Obsidian's language. |

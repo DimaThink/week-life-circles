@@ -165,6 +165,7 @@
     font-weight: 700;
 }
 .wcg-year-label {
+    box-sizing: border-box; /* the decade-start border must not widen the label (header would drift off the columns) */
     width: var(--wcg-cell);
     min-width: var(--wcg-cell);
     font-size: 11px;
