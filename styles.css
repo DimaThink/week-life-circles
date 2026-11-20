@@ -253,7 +253,19 @@
     text-decoration: none;
     border-radius: 50%;
     overflow: hidden;
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-normal) 14%, transparent);
+    position: relative;
+}
+/* Contrast ring on every filled cell. --text-normal is dark in light themes and
+   light in dark ones: white/cream squares get a dark edge, black ("Void") a
+   light one. An overlay (not the link's own inset shadow), so image squares —
+   which cover the link's background — get the ring too. */
+.wcg-link::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-normal) 30%, transparent);
+    pointer-events: none;
 }
 .wcg-cell img {
     width: var(--wcg-cell);
@@ -291,7 +303,7 @@
     width: 32px;
     height: 32px;
     border-radius: 6px;
-    border: 1px solid rgba(128,128,128,0.2);
+    border: 1px solid color-mix(in srgb, var(--text-normal) 30%, transparent);
 }
 .wcg-swatch-dot img {
     width: 32px;
@@ -415,6 +427,7 @@
     margin: 0 1px;
     cursor: pointer;
     background: var(--wcg-sq-color, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-normal) 30%, transparent);
 }
 body img.wcg-sq-img,
 body .wcg-sq-img img {
