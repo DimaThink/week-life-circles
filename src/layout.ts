@@ -3,7 +3,7 @@ import type { CellShape } from './config';
 /** Cell diameter / side at full size, in px (CSS `--wcg-cell` default). */
 export const BASE_CELL = 42;
 /** Width of the frozen week-number column, in px (CSS `--wcg-label-w`). */
-export const LABEL_W = 42;
+export const LABEL_W = 50;
 /** Year columns per swipe page on a narrow view: one decade. */
 export const PAGE_COLUMNS = 10;
 /** Gap between squares in square mode, in px (the CSS uses the same literal 4px). */

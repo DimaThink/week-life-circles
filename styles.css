@@ -4,7 +4,7 @@
     height: 100%;
     width: 100%;
     background: var(--background-primary);
-    --wcg-label-w: 42px;                                           /* frozen week-number column */
+    --wcg-label-w: 50px;                                           /* frozen week-number column (= LABEL_W) */
     --wcg-cell: 42px;                                              /* circle diameter (D) */
     --wcg-pitch: calc(var(--wcg-cell) * 49 / 42);                  /* equal centre-to-centre distance to all 6 neighbours (S); 49px at 42px */
     --wcg-vgap: calc(var(--wcg-pitch) - var(--wcg-cell));          /* row gap = S - D */
@@ -20,7 +20,8 @@
        the frozen week labels (that showed as crescent slivers). */
     scroll-snap-type: x proximity;
     scroll-padding-left: var(--wcg-label-w);
-    padding: 0 16px 40px 0;
+    /* breathing room under the year header (top) — the first row must not touch its line */
+    padding: 10px 16px 40px 0;
     box-sizing: border-box;
 }
 /* Column labels: outside the scroller, slid sideways by --wcg-scroll-x (set
@@ -138,7 +139,7 @@
     font-size: 10px;
     color: var(--text-faint);
     text-align: right;
-    padding-right: 6px;
+    padding-right: 14px; /* gap between the week number and the first column */
     flex-shrink: 0;
     font-family: var(--font-monospace);
     user-select: none;
