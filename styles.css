@@ -136,7 +136,7 @@
     box-sizing: border-box;
     width: var(--wcg-label-w);
     min-width: var(--wcg-label-w);
-    font-size: 10px;
+    font-size: 11px; /* same as the year ruler */
     color: var(--text-faint);
     text-align: right;
     padding-right: 14px; /* gap between the week number and the first column */
@@ -173,7 +173,7 @@
     color: var(--text-faint);
     text-align: center;
     flex-shrink: 0;
-    overflow: hidden;
+    position: relative; /* anchors the decade divider */
     cursor: default;
     user-select: none;
     font-family: var(--font-monospace);
@@ -183,8 +183,17 @@
     color: var(--interactive-accent);
     font-weight: 700;
 }
-.wcg-year-label.wcg-decade-start {
-    border-left: 1px solid var(--background-modifier-border);
+/* Decade divider: centred in the gap before the column (not on the cell's edge)
+   and run down to the header's bottom line, so the two meet in a clean T. */
+.wcg-year-label.wcg-decade-start::before {
+    content: '';
+    position: absolute;
+    left: calc(var(--wcg-hgap) / -2 - 0.5px);
+    top: 1px;
+    bottom: -4px; /* through the header's 4px bottom padding to its border */
+    width: 1px;
+    background: var(--background-modifier-border);
+    pointer-events: none;
 }
 .wcg-cell {
     scroll-snap-align: start;

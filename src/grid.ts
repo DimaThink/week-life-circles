@@ -305,12 +305,13 @@ function countCells(cells: CellMap): number {
 function renderYearHeader(headerTrack: HTMLElement, years: number[], curYY: number | null): void {
   const header = headerTrack.createDiv({ cls: 'wcg-row wcg-header' });
   header.createDiv({ cls: 'wcg-ww-label' });
-  for (const yy of years) {
+  years.forEach((yy, i) => {
     let cls = 'wcg-year-label';
     if (yy === curYY) cls += ' wcg-cur-year';
-    if (isDecadeStart(yy)) cls += ' wcg-decade-start';
+    // no divider before the first column: it would double the week-number column's edge
+    if (i > 0 && isDecadeStart(yy)) cls += ' wcg-decade-start';
     header.createDiv({ cls, text: String(yy) });
-  }
+  });
 }
 
 function cellClass(colOffset: boolean, isCur: boolean, filled: boolean, past: boolean): string {
