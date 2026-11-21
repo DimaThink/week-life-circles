@@ -107,6 +107,7 @@ describe('cellShape', () => {
   });
   it('keeps square, rejects garbage', () => {
     expect(normalizeSettings({ cellShape: 'square' }).cellShape).toBe('square');
+    expect(normalizeSettings({ cellShape: 'dots' }).cellShape).toBe('dots');
     expect(normalizeSettings({ cellShape: 'hexagon' as never }).cellShape).toBe('circle');
     expect(normalizeSettings({ cellShape: 3 as never }).cellShape).toBe('circle');
   });

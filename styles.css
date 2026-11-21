@@ -376,18 +376,19 @@
     scroll-snap-align: start;
     scroll-snap-stop: always;
 }
-/* ── Square view: a plain aligned grid like the classic poster ────────────────
+/* ── Aligned views (squares, circles in columns): a plain grid like the poster ─
    Gap 4px both ways (= SQUARE_GAP in src/layout.ts). Rows are `cell` tall and
    `vgap` apart, so the row stride is cell + 4px = pitch; each frozen label is
    one pitch tall and centred on its row (2px over each edge), so the opaque
    labels still tile into one gap-free strip. No stagger, so no label offset. */
-.wcg-outer.wcg-shape-square {
+.wcg-outer.wcg-aligned {
     --wcg-pitch: calc(var(--wcg-cell) + 4px);
     --wcg-vgap: 4px;
     --wcg-hgap: 4px;
 }
-.wcg-shape-square .wcg-cell.wcg-col-offset { --wcg-shift: 0px; }
-.wcg-shape-square .wcg-ww-label { transform: none; }
+.wcg-aligned .wcg-cell.wcg-col-offset { --wcg-shift: 0px; }
+.wcg-aligned .wcg-ww-label { transform: none; }
+/* `.wcg-aligned` alone = "circles in columns": the same grid, cells stay round. */
 .wcg-shape-square .wcg-cell,
 .wcg-shape-square .wcg-link,
 .wcg-shape-square .wcg-cell img { border-radius: 6px; }
@@ -399,9 +400,9 @@
     pointer-events: none;
 }
 /* Months in the day view, marked per cell (so a leap year's one-row shift stays
-   true). Circles: the honeycomb stagger would break a separator line into a
+   true). Honeycomb: the stagger would break a separator line into a
    zigzag of stubs, so the month's 1st gets a thin outer ring instead (it fits in
-   the 7px clearance to every neighbour). Squares: a straight line in the middle
+   the 7px clearance to every neighbour). Aligned views: a straight line in the middle
    of the row gap above the cell, spanning the column pitch. The cell must not
    clip either; round clipping of content is done by .wcg-link and the image. */
 .wcg-day-mode .wcg-cell.wcg-month-start { overflow: visible; }
@@ -413,7 +414,7 @@
     box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--text-normal) 45%, transparent);
     pointer-events: none;
 }
-.wcg-shape-square .wcg-day-mode .wcg-cell.wcg-month-start::before {
+.wcg-aligned .wcg-day-mode .wcg-cell.wcg-month-start::before {
     inset: auto;
     left: calc(var(--wcg-hgap) / -2);
     right: calc(var(--wcg-hgap) / -2);

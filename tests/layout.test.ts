@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { columnPitch, pagedCellSize, isPageStart, swipeStep, pageTarget, BASE_CELL, PAGE_COLUMNS } from '../src/layout';
+import { columnPitch, pagedCellSize, isPageStart, swipeStep, pageTarget, isAlignedShape, nextCellShape, BASE_CELL, PAGE_COLUMNS } from '../src/layout';
 
 describe('columnPitch', () => {
   it('matches the CSS geometry at 42px', () => {
@@ -90,5 +90,23 @@ describe('pageTarget', () => {
     expect(pageTarget(lefts, 0, -1)).toBe(0);
     expect(pageTarget(lefts, 1044, 1)).toBe(1044);
     expect(pageTarget([], 0, 1)).toBeNull();
+  });
+});
+
+describe('dot grid (circles in aligned columns)', () => {
+  it('uses the square geometry: no honeycomb stagger', () => {
+    expect(isAlignedShape('dots')).toBe(true);
+    expect(isAlignedShape('square')).toBe(true);
+    expect(isAlignedShape('circle')).toBe(false);
+    expect(columnPitch(BASE_CELL, 'dots')).toBe(columnPitch(BASE_CELL, 'square'));
+    expect(pagedCellSize(345, 'dots')).toBe(pagedCellSize(345, 'square'));
+  });
+});
+
+describe('nextCellShape', () => {
+  it('cycles honeycomb → squares → dot grid → honeycomb', () => {
+    expect(nextCellShape('circle')).toBe('square');
+    expect(nextCellShape('square')).toBe('dots');
+    expect(nextCellShape('dots')).toBe('circle');
   });
 });

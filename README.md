@@ -31,9 +31,11 @@ day or two). That is why the plugin needs your birth date before it shows anythi
   staggered grid of circles. The current week pulses. Rows and columns can be swapped.
 - **Day grid** — the next ten personal years, one circle per day. The row
   labels show the calendar date (the month's short name on the 1st), and each
-  month's 1st is marked in every column (a thin ring with circles, a line with squares).
-- **Circles or squares** — draw the grids as circles in a honeycomb, or as
-  squares in a plain aligned grid like the classic "life in weeks" poster.
+  month's 1st is marked in every column (a thin ring in the honeycomb, a line in the aligned views).
+- **Three views** — the first button at the top right of the grid switches
+  between circles in a honeycomb (the default), squares in a plain aligned grid
+  like the classic "life in weeks" poster, and circles in that same aligned grid.
+  The choice applies to both grids and is remembered.
 - **Squares** — each note carries one colored square (or a small image, e.g. a
   flag for a trip). The set of squares is yours to edit in the settings: rename,
   recolor, reorder, delete, and upload images straight from your device (or pick
@@ -77,7 +79,6 @@ an embed: `![[england.png|14]]`.
 | --- | --- |
 | Birth date | Anchor of the whole grid. Nothing is shown until it is set. |
 | Start age / End age | First and last personal year shown in the week grid. |
-| Cell shape | **Circles** (a honeycomb, the default) or **Squares** (a plain aligned grid). Applies to both grids. |
 | Week folder / Day folder | Where week and day notes are stored. |
 | Week template path / Day template path | Optional path to a note used as the week or day template instead of the built-in one. The same placeholders work in it. |
 | Week template / Day template | Text of new notes. Placeholders: `{{ww}}`, `{{yy}}`, `{{square}}`, `{{date}}`, `{{photos}}` (week), `{{weekday}}` (day). The weekday is written in Obsidian's language. |

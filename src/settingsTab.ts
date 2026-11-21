@@ -77,21 +77,7 @@ export class WeekLifeCirclesSettingTab extends PluginSettingTab {
     addAge('Start age', 'startAge', 'First personal year shown in the week grid.');
     addAge('End age', 'endAge', 'Last personal year shown in the week grid.');
 
-    // --- Appearance + squares (the editor previews squares in the chosen shape) ---
-    new Setting(containerEl).setName('Appearance').setHeading();
-    new Setting(containerEl)
-      .setName('Cell shape')
-      .setDesc('Circles in a honeycomb, or squares in a plain grid like the classic poster.')
-      .addDropdown(dd => dd
-        .addOption('circle', 'Circles')
-        .addOption('square', 'Squares')
-        .setValue(s.cellShape)
-        .onChange(v => {
-          s.cellShape = v === 'square' ? 'square' : 'circle';
-          this.squares.render();
-          void save();
-        }));
-
+    // --- Squares (previewed in the grid's current view; the view is switched from the grid's toolbar) ---
     new Setting(containerEl).setName('Squares').setHeading()
       .setDesc('What kind of week or day it was. Rename, recolour, replace images and reorder here — the first square is preselected for new notes.');
     this.squares.mount(containerEl);

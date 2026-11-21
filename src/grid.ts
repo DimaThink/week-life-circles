@@ -4,7 +4,7 @@ import { Cell, CellMap, CellShape, Settings } from './config';
 import { colorMap, squareImage } from './squares';
 import { dayLabel, isMonthStart } from './months';
 import { momentFmt } from './momentFmt';
-import { BASE_CELL, LABEL_W, isPageStart, pageTarget, pagedCellSize, swipeStep } from './layout';
+import { BASE_CELL, LABEL_W, isAlignedShape, isPageStart, nextCellShape, pageTarget, pagedCellSize, swipeStep } from './layout';
 
 export interface GridHost {
   readonly app: App;
@@ -17,6 +17,8 @@ export interface GridHost {
   transposed: boolean; // week-grid orientation toggle
   /** Flips the orientation and re-renders the open week views. */
   setTransposed(v: boolean): void;
+  /** Saves the cell shape and re-renders the open week and day views. */
+  setCellShape(shape: CellShape): void;
   rebuildWeekCache(): Promise<CellMap>;
   rebuildDayCache(): Promise<CellMap>;
   openCreateWeek(yy: number, ww: number): void;
@@ -55,6 +57,26 @@ const ICON_COLS: Shape[] = [
   { tag: 'rect', attrs: { x: '4', y: '3', width: '6', height: '18', rx: '1.5' } },
   { tag: 'rect', attrs: { x: '14', y: '3', width: '6', height: '18', rx: '1.5' } },
 ];
+const ICON_SHAPE: Record<CellShape, Shape[]> = {
+  circle: [
+    { tag: 'circle', attrs: { cx: '7', cy: '8', r: '3.5' } },
+    { tag: 'circle', attrs: { cx: '17', cy: '8', r: '3.5' } },
+    { tag: 'circle', attrs: { cx: '12', cy: '16.5', r: '3.5' } },
+  ],
+  square: [
+    { tag: 'rect', attrs: { x: '4', y: '4', width: '7', height: '7', rx: '1.5' } },
+    { tag: 'rect', attrs: { x: '13', y: '4', width: '7', height: '7', rx: '1.5' } },
+    { tag: 'rect', attrs: { x: '4', y: '13', width: '7', height: '7', rx: '1.5' } },
+    { tag: 'rect', attrs: { x: '13', y: '13', width: '7', height: '7', rx: '1.5' } },
+  ],
+  dots: [
+    { tag: 'circle', attrs: { cx: '7.5', cy: '7.5', r: '3.5' } },
+    { tag: 'circle', attrs: { cx: '16.5', cy: '7.5', r: '3.5' } },
+    { tag: 'circle', attrs: { cx: '7.5', cy: '16.5', r: '3.5' } },
+    { tag: 'circle', attrs: { cx: '16.5', cy: '16.5', r: '3.5' } },
+  ],
+};
+const SHAPE_NAME: Record<CellShape, string> = { circle: 'Honeycomb', square: 'Squares', dots: 'Circles in columns' };
 const ICON_REFRESH: Shape[] = [
   { tag: 'path', attrs: { d: 'M21 12a9 9 0 1 1-2.64-6.36' } },
   { tag: 'path', attrs: { d: 'M21 3v6h-6' } },
@@ -213,7 +235,9 @@ interface Shell { outer: HTMLElement; root: HTMLElement; headerTrack: HTMLElemen
 function renderShell(el: HTMLElement, title: string, rootCls: string, shape: CellShape): Shell {
   el.empty();
   // Toolbar lives OUTSIDE the scroll area so it never scrolls off on a wide (phone) grid.
-  const outer = el.createDiv({ cls: shape === 'square' ? 'wcg-outer wcg-shape-square' : 'wcg-outer' });
+  const outer = el.createDiv({ cls: 'wcg-outer' });
+  if (isAlignedShape(shape)) outer.addClass('wcg-aligned');
+  if (shape === 'square') outer.addClass('wcg-shape-square');
   const toolbar = outer.createDiv({ cls: 'wcg-toolbar' });
   const titleWrap = toolbar.createDiv({ cls: 'wcg-title-wrap' });
   titleWrap.createDiv({ cls: 'wcg-title', text: title });
@@ -228,6 +252,14 @@ function renderShell(el: HTMLElement, title: string, rootCls: string, shape: Cel
   }, { passive: true });
   attachDecadeSwipe(root);
   return { outer, root, headerTrack, toolbar, info };
+}
+
+/** First toolbar button: shows the current view, a click switches to the next one. */
+function shapeButton(toolbar: HTMLElement, host: GridHost): void {
+  const cur = host.settings.cellShape;
+  const next = nextCellShape(cur);
+  const btn = iconButton(toolbar, ICON_SHAPE[cur], `View: ${SHAPE_NAME[cur]} — switch to ${SHAPE_NAME[next]}`);
+  btn.addEventListener('click', () => host.setCellShape(next));
 }
 
 function renderNoBirthDate(el: HTMLElement): void {
@@ -329,6 +361,7 @@ export async function renderWeekGrid(el: HTMLElement, host: GridHost): Promise<v
   const { outer, root, headerTrack, toolbar, info } = renderShell(
     el, 'Life in weeks', host.transposed ? 'wcg-view-root wcg-transposed' : 'wcg-view-root', host.settings.cellShape);
   const transposed = host.transposed;
+  shapeButton(toolbar, host);
   const rotateBtn = iconButton(
     toolbar,
     transposed ? ICON_COLS : ICON_ROWS,
@@ -401,6 +434,7 @@ export async function renderDayGrid(el: HTMLElement, host: GridHost): Promise<vo
 
   const { outer, root, headerTrack, toolbar, info } = renderShell(
     el, 'Life in days', 'wcg-view-root wcg-day-mode', host.settings.cellShape);
+  shapeButton(toolbar, host);
   const todayBtn = iconButton(toolbar, ICON_TODAY, 'Scroll to today');
   rebuildButton(toolbar, 'Rebuild day cache', () => host.rebuildDayCache(), () => renderDayGrid(el, host));
 

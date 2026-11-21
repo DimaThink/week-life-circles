@@ -1,6 +1,6 @@
 import { Notice, Platform, Plugin, TAbstractFile, TFile } from 'obsidian';
 import type { WorkspaceLeaf } from 'obsidian';
-import { CellMap, Settings, DEFAULT_SETTINGS, normalizeSettings, parseBirthDate } from './config';
+import { CellMap, CellShape, Settings, DEFAULT_SETTINGS, normalizeSettings, parseBirthDate } from './config';
 import { migrate, SavedData } from './migrate';
 import { Calendar, WEEKS_PER_YEAR } from './calendar';
 import { decorateSquares, squareImage } from './squares';
@@ -281,6 +281,13 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
   }
 
   // ── GridHost / ModalHost ────────────────────────────────────────────────
+
+  setCellShape(shape: CellShape): void {
+    this.settings.cellShape = shape;
+    void this.persist(); // only the look changed: no cache rebuild
+    this.refreshViews(WEEK_VIEW_TYPE);
+    this.refreshViews(DAY_VIEW_TYPE);
+  }
 
   setTransposed(v: boolean): void {
     this.transposed = v;

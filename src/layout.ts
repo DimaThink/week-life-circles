@@ -9,13 +9,23 @@ export const PAGE_COLUMNS = 10;
 /** Gap between squares in square mode, in px (the CSS uses the same literal 4px). */
 export const SQUARE_GAP = 4;
 
+/** Whether cells sit in a plain aligned grid (squares, dots) rather than the honeycomb. */
+export function isAlignedShape(shape: CellShape): boolean {
+  return shape !== 'circle';
+}
+
+/** The view the toolbar's shape button switches to next. */
+export function nextCellShape(shape: CellShape): CellShape {
+  return shape === 'circle' ? 'square' : shape === 'square' ? 'dots' : 'circle';
+}
+
 /**
  * Horizontal distance between neighbouring column starts for a given cell size.
  * Circles sit in a hex packing whose centre spacing is 49/42 of the diameter, so
  * columns are that × √3/2 apart; squares are a plain grid with a fixed gap.
  */
 export function columnPitch(cell: number, shape: CellShape): number {
-  return shape === 'square' ? cell + SQUARE_GAP : cell * (49 / 42) * Math.sqrt(3) / 2;
+  return isAlignedShape(shape) ? cell + SQUARE_GAP : cell * (49 / 42) * Math.sqrt(3) / 2;
 }
 
 /**
@@ -27,7 +37,7 @@ export function pagedCellSize(available: number, shape: CellShape): number | nul
   if (!(available > 0)) return null;
   if (PAGE_COLUMNS * columnPitch(BASE_CELL, shape) <= available) return null;
   const pitch = available / PAGE_COLUMNS;
-  const cell = shape === 'square' ? pitch - SQUARE_GAP : pitch / ((49 / 42) * Math.sqrt(3) / 2);
+  const cell = isAlignedShape(shape) ? pitch - SQUARE_GAP : pitch / ((49 / 42) * Math.sqrt(3) / 2);
   return cell > 0 ? cell : null;
 }
 

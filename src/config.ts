@@ -10,8 +10,11 @@ export interface Cell { square: string | null; path: string }
 /** Cells keyed by personal year, then by week number (week grid) or day-of-year (day grid). */
 export type CellMap = Record<string, Record<string, Cell>>;
 
-/** How grid cells are drawn: circles in a honeycomb, or squares in a plain aligned grid. */
-export type CellShape = 'circle' | 'square';
+/**
+ * How grid cells are drawn: circles in a honeycomb, squares in a plain aligned
+ * grid, or circles in that same aligned grid (`dots`).
+ */
+export type CellShape = 'circle' | 'square' | 'dots';
 
 export interface Settings {
   birthDate: string; // "YYYY-MM-DD", "" until set
@@ -164,7 +167,7 @@ export function normalizeSettings(s: Partial<Settings> | null | undefined): Sett
     immichUrl: str('immichUrl').trim().replace(/\/+$/, ''),
     immichApiKey: str('immichApiKey'),
     immichPageSize: pageSize >= 1 ? Math.min(pageSize, MAX_IMMICH_PAGE) : d.immichPageSize,
-    cellShape: src.cellShape === 'square' ? 'square' : 'circle',
+    cellShape: src.cellShape === 'square' || src.cellShape === 'dots' ? src.cellShape : 'circle',
   };
 }
 
