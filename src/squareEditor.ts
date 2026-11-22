@@ -85,6 +85,12 @@ async function createSquareImage(app: App, name: string, bytes: ArrayBuffer): Pr
 }
 
 /** Vault images that can serve as a square (png/jpg). */
+/** Is a bare image name free? Asks the link resolver instead of listing the whole vault. */
+function imageNamesTaken(app: App, squareKeys: string[]): { has(name: string): boolean } {
+  const reserved = takenImageNames(squareKeys, []);
+  return { has: name => reserved.has(name) || app.metadataCache.getFirstLinkpathDest(name, '') !== null };
+}
+
 class VaultImageModal extends FuzzySuggestModal<TFile> {
   constructor(app: App, private readonly onPick: (f: TFile) => void) {
     super(app);
@@ -297,7 +303,7 @@ export class SquareEditor {
     if (!picked) return false;
     try {
       const bytes = await toSquareImage(picked, 'image/png');
-      const taken = takenImageNames(settings.squares.map(s => s.key), app.vault.getFiles().map(f => f.name));
+      const taken = imageNamesTaken(app, settings.squares.map(s => s.key));
       const file = await createSquareImage(app, uniqueImageName(slugify(q.name), taken), bytes);
       q.color = null;
       q.image = file.name;
@@ -420,7 +426,7 @@ export class SquareEditor {
         }
         sq = { key: this.pending.file.name, name, color: null };
       } else if (this.pending?.kind === 'upload') {
-        const taken = takenImageNames(keys, app.vault.getFiles().map(f => f.name));
+        const taken = imageNamesTaken(app, keys);
         const file = await createSquareImage(app, uniqueImageName(slugify(name), taken), this.pending.bytes);
         sq = { key: file.name, name, color: null };
       } else {

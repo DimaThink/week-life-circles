@@ -19,7 +19,7 @@ export function isSquareImageName(name: string): boolean {
 }
 
 /** `<base>.png`, or `<base>-2.png`, … — the first name not in `taken` (lowercased vault file names). */
-export function uniqueImageName(base: string, taken: Set<string>): string {
+export function uniqueImageName(base: string, taken: { has(name: string): boolean }): string {
   for (let i = 1; ; i++) {
     const name = `${base}${i === 1 ? '' : `-${i}`}.png`;
     if (!taken.has(name.toLowerCase())) return name;

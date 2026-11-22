@@ -1,4 +1,4 @@
-import { Notice, Platform, Plugin, TAbstractFile, TFile } from 'obsidian';
+import { Notice, Platform, Plugin, TAbstractFile, TFile, TFolder } from 'obsidian';
 import type { WorkspaceLeaf } from 'obsidian';
 import { CellMap, CellShape, Settings, DEFAULT_SETTINGS, normalizeSettings, parseBirthDate } from './config';
 import { migrate, SavedData } from './migrate';
@@ -361,7 +361,15 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
   }
 
   private noteFiles(kind: Kind): TFile[] {
-    return this.app.vault.getFiles().filter(f => this.isNotePath(kind, f.path));
+    // Walk only the notes folder — never the whole vault.
+    const folder = kind === 'week' ? this.settings.weekFolder : this.settings.dayFolder;
+    const out: TFile[] = [];
+    const walk = (node: TAbstractFile | null): void => {
+      if (node instanceof TFolder) node.children.forEach(walk);
+      else if (node instanceof TFile && this.isNotePath(kind, node.path)) out.push(node);
+    };
+    walk(this.app.vault.getAbstractFileByPath(folder));
+    return out;
   }
 
   private squareKeys(): string[] {
