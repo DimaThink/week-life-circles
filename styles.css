@@ -56,11 +56,6 @@
     flex-direction: column;
     gap: var(--wcg-vgap);
     min-width: 100%;
-    animation: wcg-enter 0.45s cubic-bezier(0.2, 0.7, 0.3, 1) both;
-}
-@keyframes wcg-enter {
-    from { opacity: 0; transform: translateY(8px); }
-    to   { opacity: 1; transform: none; }
 }
 .wcg-row {
     display: flex;
@@ -211,13 +206,12 @@
     pointer-events: auto;
     --wcg-shift: 0px;
     transform: translateY(var(--wcg-shift));
-    transition: transform 0.16s cubic-bezier(0.2, 0.7, 0.3, 1),
-                box-shadow 0.16s ease, opacity 0.18s ease;
 }
 /* Every other column is shifted down half a circle → staggered (hex) packing.
    Offset lives in a custom prop so hover/scale can compose with it. */
 .wcg-cell.wcg-col-offset { --wcg-shift: calc(var(--wcg-pitch) / 2); }
 @media (hover: hover) {
+.wcg-cell { transition: transform 0.16s cubic-bezier(0.2, 0.7, 0.3, 1), box-shadow 0.16s ease; }
 .wcg-cell:hover {
     z-index: 5;
     transform: translateY(var(--wcg-shift)) scale(1.16);
@@ -232,7 +226,7 @@
 }
 .wcg-cell.wcg-cur-cell {
     box-shadow: inset 0 0 0 2px var(--interactive-accent);
-    animation: wcg-today 2.6s ease-out infinite;
+    animation: wcg-today 2.6s ease-out 4;
 }
 @keyframes wcg-today {
     0%   { box-shadow: inset 0 0 0 2px var(--interactive-accent),
@@ -362,7 +356,6 @@
 .wcg-fab:hover { box-shadow: 0 10px 26px -6px color-mix(in srgb, var(--interactive-accent) 70%, transparent); }
 .wcg-fab:active { transform: scale(0.94); }
 @media (prefers-reduced-motion: reduce) {
-    .wcg-wrap,
     .wcg-cell,
     .wcg-cell.wcg-cur-cell,
     .wcg-flash,
@@ -665,7 +658,6 @@ body .wcg-sq-img img {
     line-height: 72px;
 }
 
-body:has(.modal-container) .wcg-fab { display: none; }
 /* Obsidian's phone modal is a fixed-height sheet: without this every section
    (and above all the scrollable Immich box) gets squeezed to fit. */
 .wcg-create-modal .modal-content { overflow-y: auto; }

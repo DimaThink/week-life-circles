@@ -247,8 +247,13 @@ function renderShell(el: HTMLElement, title: string, rootCls: string, shape: Cel
   const headerViewport = outer.createDiv({ cls: 'wcg-header-viewport' });
   const headerTrack = headerViewport.createDiv({ cls: 'wcg-header-track' });
   const root = outer.createDiv({ cls: rootCls });
+  let scrollFrame = 0;
   root.addEventListener('scroll', () => {
-    headerTrack.setCssProps({ '--wcg-scroll-x': `${-root.scrollLeft}px` });
+    if (scrollFrame) return; // one header update per frame, however many scroll events fire
+    scrollFrame = root.win.requestAnimationFrame(() => {
+      scrollFrame = 0;
+      headerTrack.setCssProps({ '--wcg-scroll-x': `${-root.scrollLeft}px` });
+    });
   }, { passive: true });
   attachDecadeSwipe(root);
   return { outer, root, headerTrack, toolbar, info };
