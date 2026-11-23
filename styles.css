@@ -434,12 +434,15 @@
 /* Link text-decoration must beat Obsidian's `a:hover` underline without !important */
 .wcg-cell .wcg-link,
 .wcg-cell .wcg-link:hover { text-decoration: none; }
-/* ── Inline squares inside notes (colour set per element from code via --wcg-sq-color) ── */
+/* ── Inline circles inside notes (colour set per element from code via --wcg-sq-color) ──
+   Colour and image markers share one size and shape; `Marker shape in notes` flips the radius. */
+body { --wcg-note-radius: 4px; }
+body.wcg-notes-circle { --wcg-note-radius: 50%; }
 .sq {
     display: inline-block;
     width: 18px;
     height: 18px;
-    border-radius: 4px;
+    border-radius: var(--wcg-note-radius);
     vertical-align: middle;
     margin: 0 1px;
     cursor: pointer;
@@ -450,12 +453,15 @@
 /* a square the settings do not list: a neutral filled box, never an empty outline */
 .sq.wcg-sq-unknown { background-color: var(--background-modifier-border-hover); }
 body img.wcg-sq-img,
+body .wcg-sq-img,
 body .wcg-sq-img img {
     width: 18px;
     height: 18px;
     display: inline-block;
     vertical-align: middle;
-    border-radius: 4px;
+    border-radius: var(--wcg-note-radius);
+    overflow: hidden;
+    object-fit: cover;
     cursor: pointer;
 }
 /* ── Colours set from code via the --wcg-color custom property ─────────────── */

@@ -39,3 +39,19 @@ describe('ageRange', () => {
     expect(ageRange(off, 35)).toEqual({ startAge: 3, endAge: 100 });
   });
 });
+
+describe('note marker shape', () => {
+  it('fresh installs draw circles in notes', () => {
+    expect(DEFAULT_SETTINGS.noteShape).toBe('circle');
+    expect(normalizeSettings({}).noteShape).toBe('circle');
+    expect(normalizeSettings(DEFAULT_SETTINGS).noteShape).toBe('circle');
+  });
+  it('settings saved before this option keep the rounded squares', () => {
+    expect(normalizeSettings({ startAge: 21 } as never).noteShape).toBe('square');
+  });
+  it('keeps an explicit choice, drops junk', () => {
+    expect(normalizeSettings({ startAge: 1, noteShape: 'circle' } as never).noteShape).toBe('circle');
+    expect(normalizeSettings({ noteShape: 'square' } as never).noteShape).toBe('square');
+    expect(normalizeSettings({ noteShape: 'hexagon' } as never).noteShape).toBe('circle');
+  });
+});

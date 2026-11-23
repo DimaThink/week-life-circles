@@ -16,6 +16,9 @@ export type CellMap = Record<string, Record<string, Cell>>;
  */
 export type CellShape = 'circle' | 'square' | 'dots';
 
+/** How the marker at the top of a note is drawn: round, or a rounded square. */
+export type NoteShape = 'circle' | 'square';
+
 /** Where each grid year starts: on the birthday, on 1 January, or on a day of your choice. */
 export type YearStart = 'birthday' | 'january' | 'custom';
 
@@ -38,6 +41,7 @@ export interface Settings {
   immichApiKey: string;
   immichPageSize: number;
   cellShape: CellShape;
+  noteShape: NoteShape; // how a circle is drawn inside a note
 }
 
 /** The circles a fresh install starts with: seven generic kinds of week (the palette from week.dth.ink). */
@@ -116,6 +120,7 @@ export const DEFAULT_SETTINGS: Settings = {
   immichApiKey: '',
   immichPageSize: 500,
   cellShape: 'circle',
+  noteShape: 'circle',
 };
 
 const MAX_AGE = 150;
@@ -173,6 +178,9 @@ export function normalizeSettings(s: Partial<Settings> | null | undefined): Sett
     immichApiKey: str('immichApiKey'),
     immichPageSize: pageSize >= 1 ? Math.min(pageSize, MAX_IMMICH_PAGE) : d.immichPageSize,
     cellShape: src.cellShape === 'square' || src.cellShape === 'dots' ? src.cellShape : 'circle',
+    noteShape: src.noteShape === 'circle' || src.noteShape === 'square'
+      ? src.noteShape
+      : ('startAge' in src ? 'square' : 'circle'), // settings saved before this option keep the old look
   };
 }
 

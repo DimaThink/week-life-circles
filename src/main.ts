@@ -178,6 +178,7 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
     this.unloaded = true;
     this.squareObserver?.disconnect();
     this.squareObserver = null;
+    activeDocument.body.removeClass('wcg-notes-circle');
     this.fab?.remove();
     this.fab = null;
     this.debounce.cancelAll();
@@ -212,6 +213,7 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
   }
 
   private refreshSquares(): void {
+    activeDocument.body.toggleClass('wcg-notes-circle', this.settings.noteShape === 'circle');
     decorateSquares(activeDocument.body, this.settings.squares, this.squareImageUrl);
   }
 

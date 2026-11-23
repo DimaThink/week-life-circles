@@ -107,6 +107,14 @@ export class WeekLifeCirclesSettingTab extends PluginSettingTab {
     // --- Squares (previewed in the grid's current view; the view is switched from the grid's toolbar) ---
     new Setting(containerEl).setName('Circles').setHeading()
       .setDesc('What kind of week or day it was. Rename, recolour, replace images and reorder here — the first circle is preselected for new notes.');
+    new Setting(containerEl)
+      .setName('Marker shape in notes')
+      .setDesc('How a circle is drawn at the top of a week or day note. Colour and image circles use the same shape.')
+      .addDropdown(d => d
+        .addOption('circle', 'Circle')
+        .addOption('square', 'Rounded square')
+        .setValue(s.noteShape)
+        .onChange(v => { s.noteShape = v === 'square' ? 'square' : 'circle'; void save(); }));
     this.squares.mount(containerEl);
 
     // --- Notes ---
