@@ -7,7 +7,7 @@ import { decorateSquares, squareImage } from './squares';
 import { parseWeekFilename, readWeekData, weekNotePath } from './weekFiles';
 import { parseDayFilename, readDayData } from './dayFiles';
 import { DAY_VIEW_TYPE, DayCalendarView, GridView, WEEK_VIEW_TYPE, WeekCalendarView } from './views/gridViews';
-import { GridHost, ICON_CALENDAR, makeIcon } from './grid';
+import { GridHost, HOVER_SOURCE, ICON_CALENDAR, makeIcon } from './grid';
 import { CreateWeekModal } from './modals/createWeekModal';
 import { CreateDayModal, ModalHost } from './modals/createDayModal';
 import { ImmichClient } from './immich';
@@ -110,6 +110,8 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
         this.openCreateWeek(next.yy, next.ww);
       },
     });
+    // Lets the grid show Obsidian's note popover on hover (Settings → Page preview lists it).
+    this.registerHoverLinkSource(HOVER_SOURCE, { display: 'Week Life Circles', defaultMod: false });
     this.addCommand({
       id: 'create-week',
       name: 'Create week file',
