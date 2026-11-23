@@ -96,8 +96,8 @@ export class WeekLifeCirclesSettingTab extends PluginSettingTab {
     addAge('End age', 'endAge', 'Last personal year shown in the week grid.');
 
     // --- Squares (previewed in the grid's current view; the view is switched from the grid's toolbar) ---
-    new Setting(containerEl).setName('Squares').setHeading()
-      .setDesc('What kind of week or day it was. Rename, recolour, replace images and reorder here — the first square is preselected for new notes.');
+    new Setting(containerEl).setName('Circles').setHeading()
+      .setDesc('What kind of week or day it was. Rename, recolour, replace images and reorder here — the first circle is preselected for new notes.');
     this.squares.mount(containerEl);
 
     // --- Notes ---
@@ -109,7 +109,7 @@ export class WeekLifeCirclesSettingTab extends PluginSettingTab {
     addText('Day template path', 'dayTemplatePath', optionalPath,
       'Optional: path to a Templater daily-note template. Leave blank to use the built-in day template.');
 
-    const ph = 'Placeholders: {{ww}} {{yy}} {{square}} {{date}} {{photos}} {{weekday}}';
+    const ph = 'Placeholders: {{ww}} {{yy}} {{circle}} {{date}} {{photos}} {{weekday}}';
     new Setting(containerEl).setName('Week template').setDesc(ph).addTextArea(t => {
       t.inputEl.rows = 10;
       t.setValue(s.weekTemplate).onChange(async v => { s.weekTemplate = v; await save(); });
@@ -163,7 +163,7 @@ export class WeekLifeCirclesSettingTab extends PluginSettingTab {
     let importInput = '';
     new Setting(containerEl)
       .setName('Import config')
-      .setDesc('Paste a config code — or a URL that returns one — and Apply. This replaces all current settings. Image squares need their image files in this vault too.')
+      .setDesc('Paste a config code — or a URL that returns one — and Apply. This replaces all current settings. Image circles need their image files in this vault too.')
       .addText(t => t.setPlaceholder('code, or https://…').onChange(v => { importInput = v; }))
       .addButton(b => b.setButtonText('Apply').setCta().onClick(() => {
         void (async () => {

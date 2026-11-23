@@ -131,7 +131,7 @@ class ToImageModal extends Modal {
   onOpen(): void {
     this.setTitle(`Use an image for "${this.name}"`);
     this.contentEl.createEl('p', {
-      text: 'Notes that already use this square keep pointing at it and will show the image instead of the colour.',
+      text: 'Notes that already use this circle keep pointing at it and will show the image instead of the colour.',
       cls: 'setting-item-description',
     });
     new Setting(this.contentEl)
@@ -190,7 +190,7 @@ export class SquareEditor {
       renderSquarePreview(app, item, q, shape);
       this.stripLabels.set(q, item.createDiv({ cls: 'wcg-sq-strip-label', text: q.name }));
     }
-    if (settings.squares.length === 0) strip.createDiv({ cls: 'setting-item-description', text: 'No squares yet — add one below.' });
+    if (settings.squares.length === 0) strip.createDiv({ cls: 'setting-item-description', text: 'No circles yet — add one below.' });
 
     settings.squares.forEach((q, i) => this.renderRow(el, q, i));
     this.renderAdd(el);
@@ -323,7 +323,7 @@ export class SquareEditor {
     const pic = squareImage(q);
     const existing = app.metadataCache.getFirstLinkpathDest(pic, '');
     if (!existing && pic.includes('/')) {
-      new Notice(`"${pic}" names a folder too, so it can't be restored by upload. Add a new square instead.`);
+      new Notice(`"${pic}" names a folder too, so it can't be restored by upload. Add a new circle instead.`);
       return;
     }
     const picked = await pickImageFile(anchor);
@@ -348,7 +348,7 @@ export class SquareEditor {
 
   private renderAdd(parent: HTMLElement): void {
     const { app, settings } = this.host;
-    const add = new Setting(parent).setName('Add a square').setClass('wcg-sq-add');
+    const add = new Setting(parent).setName('Add a circle').setClass('wcg-sq-add');
 
     // live preview of the square being added
     const previewHost = add.nameEl.createDiv({ cls: 'wcg-sq-add-preview' });
@@ -365,7 +365,7 @@ export class SquareEditor {
       }
     };
     drawPreview();
-    add.setDesc(this.newMode === 'color' ? 'A colour square.'
+    add.setDesc(this.newMode === 'color' ? 'A colour circle.'
       : this.pending?.kind === 'vault' ? `Uses ${this.pending.file.path}.`
         : this.pending?.kind === 'upload' ? 'Uploaded image — saved to your attachments folder when you add it.'
           : 'Upload an image (e.g. a flag) or pick one already in your vault.');
@@ -412,7 +412,7 @@ export class SquareEditor {
   private async addSquare(): Promise<void> {
     const { app, settings } = this.host;
     const name = this.newName.trim();
-    if (!name) { new Notice('Give the square a name first.'); return; }
+    if (!name) { new Notice('Give the circle a name first.'); return; }
     const keys = settings.squares.map(q => q.key);
     let sq: SquareDef;
     try {
@@ -421,7 +421,7 @@ export class SquareEditor {
       } else if (this.pending?.kind === 'vault') {
         // notes match squares by name without extension: rest.jpg would read as rest.png's notes
         if (squareClassClash(this.pending.file.name, keys)) {
-          new Notice(`A square already uses the name "${this.pending.file.basename}". Rename the file first.`);
+          new Notice(`A circle already uses the name "${this.pending.file.basename}". Rename the file first.`);
           return;
         }
         sq = { key: this.pending.file.name, name, color: null };
@@ -435,10 +435,10 @@ export class SquareEditor {
       }
     } catch (e) {
       console.error('week-life-circles: adding square failed', e);
-      new Notice(`Could not add the square: ${(e as Error).message}`);
+      new Notice(`Could not add the circle: ${(e as Error).message}`);
       return;
     }
-    if (settings.squares.some(q => q.key === sq.key)) { new Notice('That image is already a square.'); return; }
+    if (settings.squares.some(q => q.key === sq.key)) { new Notice('That image is already a circle.'); return; }
     settings.squares.push(sq);
     this.newName = '';
     this.setPending(null);

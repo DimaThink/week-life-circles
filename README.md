@@ -6,13 +6,13 @@ Week Life Circles draws your life as a grid: 52 weeks down, one column per year,
 
 ## Screenshots
 
-**The week grid** — one circle per week of your life, colored by what kind of week it was, with image squares for trips and milestones:
+**The week grid** — one circle per week of your life, colored by what kind of week it was, with image circles for trips and milestones:
 
 <img src="docs/screenshots/week-grid.png" alt="The week grid" height="540">
 
-**Creating a week note** — pick a square, and optionally attach photos (including from an Immich server):
+**Creating a week note** — pick a circle, and optionally attach photos (including from an Immich server):
 
-<img src="docs/screenshots/create-week.png" alt="The Create week file dialog with the square picker" width="760">
+<img src="docs/screenshots/create-week.png" alt="The Create week file dialog with the circle picker" width="760">
 
 **Every circle links to its note:**
 
@@ -39,21 +39,21 @@ Prefer a calendar-style grid? **Year starts** lets each year begin on your birth
   between circles in a honeycomb (the default), squares in a plain aligned grid
   like the classic "life in weeks" poster, and circles in that same aligned grid.
   The choice applies to both grids and is remembered.
-- **Squares** — each note carries one colored square (or a small image, e.g. a
-  flag for a trip). The set of squares is yours to edit in the settings: rename,
+- **Circles** — each note carries one colored circle (or a small image, e.g. a
+  flag for a trip). The set of circles is yours to edit in the settings: rename,
   recolor, reorder, delete, and upload images straight from your device (or pick
   one already in your vault) — with a live preview in your cell shape.
-- **One-click notes** — clicking an empty circle opens a dialog: pick the square,
+- **One-click notes** — clicking an empty circle opens a dialog: pick the circle,
   optionally attach photos or videos, and the note is created from your template.
 - **Multi-week notes** — one note can cover several weeks (`03-05.28` in its
-  first lines, with one square per week).
+  first lines, with one circle per week).
 - **Templates** — the week and day note templates are plain text in the settings.
 - **Works on mobile** — including a floating button to open the grid. On a
   narrow screen the year columns page by decade: swipe sideways to flip exactly
   ten years (21–30, 31–40, …), scroll up and down as usual. The cells shrink a
   little so a whole decade fits the screen.
-- **Follows your theme** — light or dark; every filled square has a subtle
-  contrasting ring, so white squares stay visible on a light background and
+- **Follows your theme** — light or dark; every filled circle has a subtle
+  contrasting ring, so white circles stay visible on a light background and
   black ones on a dark background.
 - **Optional Immich photo picker** — see below. Off by default.
 
@@ -72,8 +72,8 @@ Prefer a calendar-style grid? **Year starts** lets each year begin on your birth
 | Week attachments | `Week life calendar/Attachments/28/07.28.jpg`, `07_2.28.jpg`, … |
 | Day note | `Week day status/07.28/2026-11-18.md` |
 
-The square is read from the first lines of the note — a line such as
-`07.28 <span class="sq sq-work"></span> 18.11.2026`. Image squares are written as
+The circle is read from the first lines of the note — a line such as
+`07.28 <span class="sq sq-work"></span> 18.11.2026`. Image circles are written as
 an embed: `![[england.png|14]]`.
 
 ## Settings
@@ -85,8 +85,8 @@ an embed: `![[england.png|14]]`.
 | Start age / End age | First and last personal year shown in the week grid. |
 | Week folder / Day folder | Where week and day notes are stored. |
 | Week template path / Day template path | Optional path to a note used as the week or day template instead of the built-in one. The same placeholders work in it. |
-| Week template / Day template | Text of new notes. Placeholders: `{{ww}}`, `{{yy}}`, `{{square}}`, `{{date}}`, `{{photos}}` (week), `{{weekday}}` (day). The weekday is written in Obsidian's language. |
-| Squares | The list of squares, previewed in your cell shape. Each is a name plus a color, or an image. Rename, recolor, reorder (the first one is preselected for new notes) or delete them; **Replace image** uploads a new picture under the same file name, so existing notes keep working. A colour square can become an image square (upload or pick a picture) and back again; notes that already use it follow along and show its new look. **Add a square**: pick a color, or upload an image (shrunk to a small PNG and saved to your attachments folder) or choose a PNG/JPG already in your vault. |
+| Week template / Day template | Text of new notes. Placeholders: `{{ww}}`, `{{yy}}`, `{{circle}}` (`{{square}}` still works), `{{date}}`, `{{photos}}` (week), `{{weekday}}` (day). The weekday is written in Obsidian's language. |
+| Circles | The list of circles, previewed in your cell shape. Each is a name plus a color, or an image. Rename, recolor, reorder (the first one is preselected for new notes) or delete them; **Replace image** uploads a new picture under the same file name, so existing notes keep working. A colour circle can become an image circle (upload or pick a picture) and back again; notes that already use it follow along and show its new look. **Add a circle**: pick a color, or upload an image (shrunk to a small PNG and saved to your attachments folder) or choose a PNG/JPG already in your vault. |
 | Immich | Optional photo picker, see below. |
 | Configuration | **Export** copies all settings as one code; **Import** applies a pasted code, or fetches one from a URL you paste. Good for setting up a second device. |
 

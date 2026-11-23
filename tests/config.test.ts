@@ -19,7 +19,7 @@ describe('DEFAULT_SETTINGS', () => {
     expect(DEFAULT_SQUARES).toHaveLength(17);
   });
   it('templates carry placeholders', () => {
-    expect(DEFAULT_SETTINGS.weekTemplate).toContain('{{ww}}.{{yy}} {{square}} {{date}}');
+    expect(DEFAULT_SETTINGS.weekTemplate).toContain('{{ww}}.{{yy}} {{circle}} {{date}}');
     expect(DEFAULT_SETTINGS.weekTemplate).toContain('{{photos}}');
     expect(DEFAULT_SETTINGS.dayTemplate).toContain('{{weekday}}');
   });

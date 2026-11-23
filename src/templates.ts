@@ -35,7 +35,7 @@ export function buildWeekNote(opts: {
     .replace(/^\{\{photos\}\}\n/gm, () => (photos ? photos + '\n' : ''))
     .replace(/\{\{ww\}\}/g, () => ww)
     .replace(/\{\{yy\}\}/g, () => yy)
-    .replace(/\{\{square\}\}/g, () => sq)
+    .replace(/\{\{(?:circle|square)\}\}/g, () => sq)
     .replace(/\{\{date\}\}/g, () => dateStr)
     .replace(/\{\{photos\}\}/g, () => photos);
 }
@@ -49,7 +49,7 @@ export function renderDayTemplate(opts: {
   const fill = (text: string): string => text
     .replace(/\{\{date\}\}/g, () => dateStr)
     .replace(/\{\{weekday\}\}/g, () => weekdayName)
-    .replace(/\{\{square\}\}/g, () => sq);
+    .replace(/\{\{(?:circle|square)\}\}/g, () => sq);
   if (templateRaw === null) return fill(settings.dayTemplate);
   // A template file: the same placeholders, plus the Templater tags of the original
   // personal template (script block dropped, date / weekday / yesterday tags filled in).

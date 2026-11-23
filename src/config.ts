@@ -63,13 +63,13 @@ export const DEFAULT_SQUARES: SquareDef[] = [
  * Template placeholders:
  *   {{ww}}      personal week number 01-52, zero-padded (e.g. 07)
  *   {{yy}}      two-digit year (e.g. 26)
- *   {{square}}  embed/marker of the week's square
+ *   {{circle}}  embed/marker of the week's circle ({{square}} still works)
  *   {{date}}    date (week start for week notes, the day for day notes)
  *   {{photos}}  photo embeds (week template only; replaced by embed lines)
  *   {{weekday}} weekday name (day template only)
  */
 export const DEFAULT_WEEK_TEMPLATE = [
-  '{{ww}}.{{yy}} {{square}} {{date}}',
+  '{{ww}}.{{yy}} {{circle}} {{date}}',
   '',
   '# What happened',
   '',
@@ -103,7 +103,7 @@ export const DEFAULT_WEEK_TEMPLATE = [
   '',
 ].join('\n');
 
-export const DEFAULT_DAY_TEMPLATE = '# {{date}} · {{weekday}} {{square}}\n';
+export const DEFAULT_DAY_TEMPLATE = '# {{date}} · {{weekday}} {{circle}}\n';
 
 export const DEFAULT_SETTINGS: Settings = {
   birthDate: '',

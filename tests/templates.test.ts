@@ -62,3 +62,22 @@ describe('week template path', () => {
     expect(normalizeSettings({ weekTemplatePath: 5 as never }).weekTemplatePath).toBe('');
   });
 });
+
+describe('{{circle}} placeholder', () => {
+  const o = { ww: '04', yy: '25', square: 'work.png', dateStr: 'd', photoNames: [] as string[], settings: DEFAULT_SETTINGS };
+  it('week template: {{circle}} is the same as {{square}}', () => {
+    const a = buildWeekNote({ ...o, templateRaw: 'x {{circle}} y' });
+    const b = buildWeekNote({ ...o, templateRaw: 'x {{square}} y' });
+    expect(a).toBe(b);
+    expect(a).toContain('sq-work');
+  });
+  it('day template: {{circle}} is the same as {{square}}', () => {
+    const base = { dateStr: 'd', weekdayName: 'Mon', yesterdayStr: 'y', square: 'work.png', settings: DEFAULT_SETTINGS };
+    expect(renderDayTemplate({ ...base, templateRaw: '# {{circle}}' })).toBe(renderDayTemplate({ ...base, templateRaw: '# {{square}}' }));
+    expect(renderDayTemplate({ ...base, templateRaw: '# {{circle}}' })).toContain('sq-work');
+  });
+  it('defaults use {{circle}}', () => {
+    expect(DEFAULT_SETTINGS.weekTemplate).toContain('{{circle}}');
+    expect(DEFAULT_SETTINGS.dayTemplate).toContain('{{circle}}');
+  });
+});
