@@ -41,9 +41,9 @@ export function pagedCellSize(available: number, shape: CellShape): number | nul
   return cell > 0 ? cell : null;
 }
 
-/** A paging snap point: the first visible year column, and every decade start (21, 31, …). */
+/** A paging snap point: the first visible year column, and every decade start (20, 30, …). */
 export function isPageStart(yy: number, firstYY: number): boolean {
-  return yy === firstYY || yy % 10 === 1;
+  return yy === firstYY || yy % 10 === 0;
 }
 
 /** Minimum sideways travel, in px, for a touch gesture to count as a page swipe. */

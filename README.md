@@ -51,7 +51,7 @@ Prefer a calendar-style grid? **Year starts** lets each year begin on your birth
 - **Templates** — the week and day note templates are plain text in the settings.
 - **Works on mobile** — including a floating button to open the grid. On a
   narrow screen the year columns page by decade: swipe sideways to flip exactly
-  ten years (21–30, 31–40, …), scroll up and down as usual. The cells shrink a
+  ten years (20–29, 30–39, …), scroll up and down as usual. The cells shrink a
   little so a whole decade fits the screen.
 - **Follows your theme** — light or dark; every filled circle has a subtle
   contrasting ring, so white circles stay visible on a light background and

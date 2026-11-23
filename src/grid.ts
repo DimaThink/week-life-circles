@@ -140,7 +140,7 @@ export function flashCell(cell: HTMLElement): void {
   window.setTimeout(() => cell.classList.remove('wcg-flash'), 1200);
 }
 
-const isDecadeStart = (yy: number): boolean => yy % 10 === 1;
+const isDecadeStart = (yy: number): boolean => yy % 10 === 0;
 
 /** Cell size each view's outer element was last paged at (absent = full size). */
 const pagedSizes = new WeakMap<HTMLElement, number>();

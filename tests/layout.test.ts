@@ -44,17 +44,17 @@ describe('pagedCellSize', () => {
 });
 
 describe('isPageStart', () => {
-  it('first column and decade starts', () => {
+  it('first column and decade starts (20, 30, …)', () => {
     expect(isPageStart(25, 25)).toBe(true);
     expect(isPageStart(26, 25)).toBe(false);
-    expect(isPageStart(31, 25)).toBe(true);
+    expect(isPageStart(30, 25)).toBe(true);
     expect(isPageStart(21, 21)).toBe(true);
-    expect(isPageStart(30, 21)).toBe(false);
+    expect(isPageStart(31, 21)).toBe(false);
   });
-  it('a start age on a decade boundary-1 (e.g. 20) gives 20, then 21, 31, …', () => {
+  it('a start age on a decade boundary gives one page start, not two', () => {
     expect(isPageStart(20, 20)).toBe(true);
-    expect(isPageStart(21, 20)).toBe(true);
-    expect(isPageStart(41, 20)).toBe(true);
+    expect(isPageStart(21, 20)).toBe(false);
+    expect(isPageStart(40, 20)).toBe(true);
   });
 });
 
