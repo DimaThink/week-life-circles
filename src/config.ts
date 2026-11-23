@@ -59,6 +59,29 @@ export const DEFAULT_SQUARES: SquareDef[] = [
   { key: 'christmas.png', name: 'Christmas', color: '#0CB04A' },
 ];
 
+/** The soft palette from week.dth.ink: seven kinds of week, readable on light and dark themes. */
+const SOFT_SQUARES: SquareDef[] = [
+  { key: 'work.png', name: 'Work', color: '#9893A5' },
+  { key: 'rest.png', name: 'Rest', color: '#56949F' },
+  { key: 'brgt.png', name: 'Bright', color: '#EA9D34' },
+  { key: 'love.png', name: 'Love', color: '#B4637A' },
+  { key: 'build.png', name: 'Building', color: '#D7827E' },
+  { key: 'hope.png', name: 'Hope', color: '#907AA9' },
+  { key: 'trip.png', name: 'Trip', color: '#286983' },
+];
+
+/** Ready-made lists of circles to start from (Settings → Circles → Start from a preset). */
+export const CIRCLE_PRESETS: { id: string; name: string; description: string }[] = [
+  { id: 'classic', name: 'Classic (17 circles)', description: 'The full original set.' },
+  { id: 'soft', name: 'Soft (7 circles, as on week.dth.ink)', description: 'Work, Rest, Bright, Love, Building, Hope, Trip.' },
+];
+
+/** A fresh copy of a preset's circles, or null for an unknown id. */
+export function circlePreset(id: string): SquareDef[] | null {
+  const list = id === 'classic' ? DEFAULT_SQUARES : id === 'soft' ? SOFT_SQUARES : null;
+  return list ? list.map(q => ({ ...q })) : null;
+}
+
 /*
  * Template placeholders:
  *   {{ww}}      personal week number 01-52, zero-padded (e.g. 07)
