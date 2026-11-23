@@ -1,6 +1,6 @@
 import { App, FuzzySuggestModal, Modal, Notice, Setting, TFile, TextComponent, normalizePath } from 'obsidian';
 import type { CellShape, SquareDef } from './config';
-import { CIRCLE_PRESETS, circlePreset } from './config';
+import { DEFAULT_SQUARES } from './config';
 import { squareImage } from './squares';
 import {
   SQUARE_IMAGE_MAX, colorSquareKey, fitWithin, isHexColor, isSquareImageName, moveItem, slugify, squareClassClash,
@@ -184,7 +184,7 @@ export class SquareEditor {
     const { app, settings } = this.host;
     const shape = settings.cellShape;
 
-    this.renderPresets(el);
+    this.renderRestore(el);
     const strip = el.createDiv({ cls: 'wcg-sq-strip' });
     this.stripLabels.clear();
     for (const q of settings.squares) {
@@ -198,26 +198,19 @@ export class SquareEditor {
     this.renderAdd(el);
   }
 
-  /** "Start from a preset": replaces the whole list after a confirmation. */
-  private renderPresets(parent: HTMLElement): void {
+  /** "Restore the default circles": replaces the whole list after a confirmation. */
+  private renderRestore(parent: HTMLElement): void {
     const { app, settings } = this.host;
-    let chosen = CIRCLE_PRESETS[0].id;
     new Setting(parent)
-      .setName('Start from a preset')
-      .setDesc('Replace the list below with a ready-made set of coloured circles, then adjust it to taste.')
-      .addDropdown(d => {
-        for (const p of CIRCLE_PRESETS) d.addOption(p.id, p.name);
-        d.setValue(chosen).onChange(v => { chosen = v; });
-      })
-      .addButton(b => b.setButtonText('Apply').onClick(() => {
-        const list = circlePreset(chosen);
-        if (!list) return;
+      .setName('Default circles')
+      .setDesc('Replace the list below with the seven default circles, then adjust it to taste.')
+      .addButton(b => b.setButtonText('Restore defaults').onClick(() => {
         new ConfirmModal(app,
-          `Replace your ${settings.squares.length} circle${settings.squares.length === 1 ? '' : 's'} with this preset? `
-          + 'Notes that use a circle the preset does not have will show it as empty until you add it again.',
+          `Replace your ${settings.squares.length} circle${settings.squares.length === 1 ? '' : 's'} with the defaults? `
+          + 'Notes that use a circle the defaults do not have will show it as empty until you add it again.',
           'Replace',
           () => {
-            settings.squares.splice(0, settings.squares.length, ...list);
+            settings.squares.splice(0, settings.squares.length, ...DEFAULT_SQUARES.map(q => ({ ...q })));
             void this.saveNow().then(() => this.render());
           }).open();
       }));

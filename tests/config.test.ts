@@ -14,9 +14,9 @@ describe('DEFAULT_SETTINGS', () => {
     expect(keys).not.toContain('england.png');
     expect(keys).not.toContain('korea.png');
     expect(keys).toContain('work.png');
-    expect(keys).toContain('christmas.png');
+    expect(keys).not.toContain('christmas.png');
     expect(DEFAULT_SQUARES.every(s => s.color !== null)).toBe(true);
-    expect(DEFAULT_SQUARES).toHaveLength(17);
+    expect(DEFAULT_SQUARES).toHaveLength(7);
   });
   it('templates carry placeholders', () => {
     expect(DEFAULT_SETTINGS.weekTemplate).toContain('{{ww}}.{{yy}} {{circle}} {{date}}');
@@ -119,5 +119,16 @@ describe('cellShape', () => {
     const old = { ...normalizeSettings({}) } as Partial<Settings>;
     delete old.cellShape;
     expect(normalizeSettings(parseConfigPayload(JSON.stringify(old))).cellShape).toBe('circle');
+  });
+});
+
+describe('default circles', () => {
+  it('are the seven generic kinds of week, coloured, with unique keys', () => {
+    expect(DEFAULT_SQUARES.map(q => q.name)).toEqual(['Work', 'Rest', 'Bright', 'Love', 'Building', 'Hope', 'Trip']);
+    expect(new Set(DEFAULT_SQUARES.map(q => q.key)).size).toBe(7);
+  });
+  it('carry no personal names', () => {
+    const names = DEFAULT_SQUARES.map(q => q.name.toLowerCase()).join(' ');
+    for (const w of ['intimate', 'lost', 'sick', 'void', 'nostalgia']) expect(names).not.toContain(w);
   });
 });

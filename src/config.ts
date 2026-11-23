@@ -39,28 +39,8 @@ export interface Settings {
   cellShape: CellShape;
 }
 
+/** The circles a fresh install starts with: seven generic kinds of week (the palette from week.dth.ink). */
 export const DEFAULT_SQUARES: SquareDef[] = [
-  { key: 'work.png', name: 'Work', color: '#4A4A4A' },
-  { key: 'brgt.png', name: 'Bright', color: '#F1F145' },
-  { key: 'rest.png', name: 'Rest', color: '#7EC8E3' },
-  { key: 'msic.png', name: 'Music', color: '#00FFFF' },
-  { key: 'love.png', name: 'Love', color: '#FF0000' },
-  { key: 'lost.png', name: 'Lost', color: '#973D3D' },
-  { key: 'hope.png', name: 'Hope', color: '#A349A4' },
-  { key: 'sick.png', name: 'Sick', color: '#AE984E' },
-  { key: 'void.png', name: 'Void', color: '#000000' },
-  { key: 'build.png', name: 'Building', color: '#CC8400' },
-  { key: 'sport.png', name: 'Sport', color: '#39FF14' },
-  { key: 'sexx.png', name: 'Intimate', color: '#FF00FF' },
-  { key: 'none.png', name: 'Neutral', color: '#9F8CAE' },
-  { key: 'past.png', name: 'Nostalgia', color: '#C6C6FF' },
-  { key: 'news.png', name: 'New chapter', color: '#FFFFFF' },
-  { key: 'futu.png', name: 'Future', color: '#FFFBE6' },
-  { key: 'christmas.png', name: 'Christmas', color: '#0CB04A' },
-];
-
-/** The soft palette from week.dth.ink: seven kinds of week, readable on light and dark themes. */
-const SOFT_SQUARES: SquareDef[] = [
   { key: 'work.png', name: 'Work', color: '#9893A5' },
   { key: 'rest.png', name: 'Rest', color: '#56949F' },
   { key: 'brgt.png', name: 'Bright', color: '#EA9D34' },
@@ -69,18 +49,6 @@ const SOFT_SQUARES: SquareDef[] = [
   { key: 'hope.png', name: 'Hope', color: '#907AA9' },
   { key: 'trip.png', name: 'Trip', color: '#286983' },
 ];
-
-/** Ready-made lists of circles to start from (Settings → Circles → Start from a preset). */
-export const CIRCLE_PRESETS: { id: string; name: string; description: string }[] = [
-  { id: 'classic', name: 'Classic (17 circles)', description: 'The full original set.' },
-  { id: 'soft', name: 'Soft (7 circles, as on week.dth.ink)', description: 'Work, Rest, Bright, Love, Building, Hope, Trip.' },
-];
-
-/** A fresh copy of a preset's circles, or null for an unknown id. */
-export function circlePreset(id: string): SquareDef[] | null {
-  const list = id === 'classic' ? DEFAULT_SQUARES : id === 'soft' ? SOFT_SQUARES : null;
-  return list ? list.map(q => ({ ...q })) : null;
-}
 
 /*
  * Template placeholders:
