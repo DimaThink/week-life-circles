@@ -1,7 +1,8 @@
-import { App, TFile } from 'obsidian';
+import { App, TFile, setTooltip } from 'obsidian';
 import { Calendar, WEEKS_PER_YEAR, formatYMD, pad2 } from './calendar';
 import { Cell, CellMap, CellShape, Settings } from './config';
 import { colorMap, squareImage } from './squares';
+import { notePreview } from './weekFiles';
 import { dayLabel, isMonthStart } from './months';
 import { momentFmt } from './momentFmt';
 import { BASE_CELL, LABEL_W, isAlignedShape, isPageStart, nextCellShape, pageTarget, pagedCellSize, swipeStep } from './layout';
@@ -344,8 +345,24 @@ function linkFiller(host: GridHost): (cell: HTMLElement, d: Cell) => void {
     }
     return url;
   };
+  const squareKeys = host.settings.squares.map(q => q.key);
+  const previews = new Map<string, string>();
   return (cell, d) => {
-    const a = cell.createEl('a', { cls: 'wcg-link', attr: { title: d.path.split('/').pop() ?? d.path } });
+    const name = d.path.split('/').pop() ?? d.path;
+    const a = cell.createEl('a', { cls: 'wcg-link' });
+    setTooltip(a, name);
+    // The first hover reads the note and swaps in a few of its lines under the file name.
+    a.addEventListener('mouseenter', () => {
+      if (previews.has(d.path)) return;
+      previews.set(d.path, '');
+      const f = host.app.vault.getAbstractFileByPath(d.path);
+      if (!(f instanceof TFile)) return;
+      void host.app.vault.cachedRead(f).then(text => {
+        const preview = notePreview(text, squareKeys);
+        previews.set(d.path, preview);
+        if (preview) setTooltip(a, `${name}\n\n${preview}`);
+      }).catch(() => { previews.delete(d.path); });
+    });
     a.addEventListener('click', (e) => {
       e.preventDefault();
       const f = host.app.vault.getAbstractFileByPath(d.path);

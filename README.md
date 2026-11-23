@@ -43,6 +43,7 @@ Prefer a calendar-style grid? **Year starts** lets each year begin on your birth
   flag for a trip). The set of circles is yours to edit in the settings: rename,
   recolor, reorder, delete, and upload images straight from your device (or pick
   one already in your vault) — with a live preview in your cell shape.
+- **Hover preview** — hovering a filled circle shows the note's file name and its first few lines, so you can recall a week without opening it.
 - **One-click notes** — clicking an empty circle opens a dialog: pick the circle,
   optionally attach photos or videos, and the note is created from your template.
 - **Multi-week notes** — one note can cover several weeks (`03-05.28` in its

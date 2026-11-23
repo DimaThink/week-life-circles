@@ -70,3 +70,42 @@ export async function readWeekData<F extends { name: string }>(
 
   return { squares, startWW, endWW };
 }
+
+const PREVIEW_LINES = 5;
+const PREVIEW_LINE_CHARS = 90;
+
+/** Plain text of one note line for a tooltip: no markup, embeds or marker HTML. */
+function plainLine(raw: string): string {
+  return raw
+    .replace(/!\[\[[^\]]*\]\]/g, '') // embeds (photos, flags)
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+    .replace(/<[^>]*>/g, '') // HTML (marker spans)
+    .replace(/\[\[([^\]|]*)\|([^\]]*)\]\]/g, '$2')
+    .replace(/\[\[([^\]]*)\]\]/g, '$1')
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/^\s*#{1,6}\s+/, '')
+    .replace(/^\s*[*-]\s+\[[ xX]\]\s*/, '☐ ')
+    .replace(/^\s*[*-]\s+/, '• ')
+    .replace(/(\*\*|__|~~|`)/g, '')
+    .trim();
+}
+
+/**
+ * A few plain lines of a note for the grid tooltip: frontmatter and the marker line at
+ * the top (week number, circle, date) are left out, markdown is stripped, long lines cut.
+ */
+export function notePreview(text: string, squareKeys: string[]): string {
+  const lines = text.split('\n');
+  const start = contentStart(lines);
+  let from = start;
+  for (let i = start; i < Math.min(start + 5, lines.length); i++) {
+    if (extractSquares(lines[i], squareKeys).length > 0) { from = i + 1; break; }
+  }
+  const out: string[] = [];
+  for (let i = from; i < lines.length && out.length < PREVIEW_LINES; i++) {
+    const p = plainLine(lines[i]);
+    if (!p) continue;
+    out.push(p.length > PREVIEW_LINE_CHARS ? p.slice(0, PREVIEW_LINE_CHARS) + '…' : p);
+  }
+  return out.join('\n');
+}
