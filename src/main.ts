@@ -1,6 +1,6 @@
 import { Notice, Platform, Plugin, TAbstractFile, TFile, TFolder } from 'obsidian';
 import type { WorkspaceLeaf } from 'obsidian';
-import { CellMap, CellShape, Settings, DEFAULT_SETTINGS, normalizeSettings, parseBirthDate } from './config';
+import { CellMap, CellShape, Settings, DEFAULT_SETTINGS, normalizeSettings, parseBirthDate, resolveAnchor } from './config';
 import { migrate, SavedData } from './migrate';
 import { Calendar, WEEKS_PER_YEAR } from './calendar';
 import { decorateSquares, squareImage } from './squares';
@@ -265,14 +265,18 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
     const keys = this.squareKeys();
     return {
       week: JSON.stringify([s.weekFolder, keys]),
-      day: JSON.stringify([s.dayFolder, keys, s.birthDate, s.startAge, s.endAge]),
+      day: JSON.stringify([s.dayFolder, keys, s.birthDate, s.startAge, s.endAge, s.yearStart, s.yearStartDate]),
     };
   }
 
   private rebuildCalendar(): void {
     const b = parseBirthDate(this.settings.birthDate);
-    this.calendar = b
-      ? new Calendar({ ...b, startAge: this.settings.startAge, endAge: this.settings.endAge })
+    const a = resolveAnchor(this.settings);
+    this.calendar = b && a
+      ? new Calendar({
+        ...b, startAge: this.settings.startAge, endAge: this.settings.endAge,
+        anchorMonth: a.month, anchorDay: a.day,
+      })
       : null;
   }
 

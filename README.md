@@ -21,9 +21,12 @@ Week Life Circles draws your life as a grid: 52 weeks down, one column per year,
 
 ## How it counts
 
-Weeks are *personal*, not calendar weeks: year `28`, week `01` starts on your
+Weeks are *personal*, not calendar weeks: by default year `28`, week `01` starts on your
 28th birthday. Each personal year has 52 weeks (the last one absorbs the extra
 day or two). That is why the plugin needs your birth date before it shows anything.
+
+Prefer a calendar-style grid? **Year starts** lets each year begin on your birthday
+(default), on 1 January, or on any day you choose (e.g. 1 September for a school year).
 
 ## Features
 
@@ -77,7 +80,8 @@ an embed: `![[england.png|14]]`.
 
 | Setting | What it does |
 | --- | --- |
-| Birth date | Anchor of the whole grid. Nothing is shown until it is set. |
+| Birth date | Needed before anything is shown; the default start of every grid year. |
+| Year starts | On your birthday (default), on 1 January, or on a custom day (`MM-DD`). Existing notes keep their week/year numbers, so after a change they map to different dates. |
 | Start age / End age | First and last personal year shown in the week grid. |
 | Week folder / Day folder | Where week and day notes are stored. |
 | Week template path / Day template path | Optional path to a note used as the week or day template instead of the built-in one. The same placeholders work in it. |

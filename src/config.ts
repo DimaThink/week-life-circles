@@ -16,8 +16,13 @@ export type CellMap = Record<string, Record<string, Cell>>;
  */
 export type CellShape = 'circle' | 'square' | 'dots';
 
+/** Where each grid year starts: on the birthday, on 1 January, or on a day of your choice. */
+export type YearStart = 'birthday' | 'january' | 'custom';
+
 export interface Settings {
   birthDate: string; // "YYYY-MM-DD", "" until set
+  yearStart: YearStart;
+  yearStartDate: string; // "MM-DD", used when yearStart is 'custom'
   startAge: number;
   endAge: number;
   weekFolder: string;
@@ -102,6 +107,8 @@ export const DEFAULT_DAY_TEMPLATE = '# {{date}} · {{weekday}} {{square}}\n';
 
 export const DEFAULT_SETTINGS: Settings = {
   birthDate: '',
+  yearStart: 'birthday',
+  yearStartDate: '',
   startAge: 21,
   endAge: 100,
   weekFolder: 'Week life calendar',
@@ -154,6 +161,8 @@ export function normalizeSettings(s: Partial<Settings> | null | undefined): Sett
   const pageSize = num('immichPageSize');
   return {
     birthDate: str('birthDate').trim(),
+    yearStart: src.yearStart === 'january' || src.yearStart === 'custom' ? src.yearStart : 'birthday',
+    yearStartDate: str('yearStartDate').trim(),
     startAge,
     endAge: Math.min(Math.max(num('endAge'), startAge + 1), MAX_AGE),
     weekFolder: str('weekFolder'),
@@ -209,4 +218,25 @@ function decodeBase64Utf8(code: string): string {
   const bin = atob(code);
   const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
   return new TextDecoder().decode(bytes);
+}
+
+/** "MM-DD" -> month/day; a real day of a non-leap year (so no 02-29), else null. */
+export function parseYearStartDate(s: string): { month: number; day: number } | null {
+  const m = /^(\d{2})-(\d{2})$/.exec((s ?? '').trim());
+  if (!m) return null;
+  const [month, day] = [Number(m[1]), Number(m[2])];
+  const dt = new Date(Date.UTC(2001, month - 1, day));
+  return dt.getUTCMonth() === month - 1 && dt.getUTCDate() === day ? { month, day } : null;
+}
+
+/** The month/day each grid year starts on; null while there is no valid birth date. */
+export function resolveAnchor(s: Settings): { month: number; day: number } | null {
+  const b = parseBirthDate(s.birthDate);
+  if (!b) return null;
+  if (s.yearStart === 'january') return { month: 1, day: 1 };
+  if (s.yearStart === 'custom') {
+    const c = parseYearStartDate(s.yearStartDate);
+    if (c) return c;
+  }
+  return { month: b.birthMonth, day: b.birthDay };
 }

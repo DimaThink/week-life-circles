@@ -15,7 +15,7 @@ interface WlcHost {
   saveSettings(): Promise<void>;
 }
 
-type TextKey = 'birthDate' | 'weekFolder' | 'dayFolder' | 'weekTemplatePath' | 'dayTemplatePath' | 'immichUrl' | 'immichApiKey';
+type TextKey = 'birthDate' | 'yearStartDate' | 'weekFolder' | 'dayFolder' | 'weekTemplatePath' | 'dayTemplatePath' | 'immichUrl' | 'immichApiKey';
 
 export class WeekLifeCirclesSettingTab extends PluginSettingTab {
   private readonly host: WlcHost;
@@ -55,7 +55,25 @@ export class WeekLifeCirclesSettingTab extends PluginSettingTab {
 
     // --- Calendar ---
     new Setting(containerEl).setName('Calendar').setHeading();
-    addText('Birth date', 'birthDate', trim, "Your date of birth — the grid's anchor (YYYY-MM-DD)", 'YYYY-MM-DD');
+    addText('Birth date', 'birthDate', trim, 'Your date of birth (YYYY-MM-DD).', 'YYYY-MM-DD');
+    new Setting(containerEl)
+      .setName('Year starts')
+      .setDesc('Where each grid year begins: on your birthday, on 1 January, or on a day you choose. '
+        + 'Existing notes keep their week and year numbers, so after a change they land on different dates.')
+      .addDropdown(d => d
+        .addOption('birthday', 'On my birthday')
+        .addOption('january', 'On 1 January')
+        .addOption('custom', 'On a custom day')
+        .setValue(s.yearStart)
+        .onChange(v => {
+          s.yearStart = v === 'january' || v === 'custom' ? v : 'birthday';
+          void save();
+          this.display(); // show or hide the custom day
+        }));
+    if (s.yearStart === 'custom') {
+      addText('Custom start day', 'yearStartDate', trim,
+        'Month and day each year starts on (MM-DD, e.g. 09-01). An invalid day falls back to your birthday.', 'MM-DD');
+    }
 
     const addAge = (name: string, key: 'startAge' | 'endAge', desc: string): void => {
       new Setting(containerEl).setName(name).setDesc(desc).addText(t => {

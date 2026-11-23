@@ -7,6 +7,9 @@ export interface CalendarConfig {
   birthDay: number;
   startAge: number;
   endAge: number;
+  /** Month/day each personal year starts on; omitted = the birthday. */
+  anchorMonth?: number;
+  anchorDay?: number;
 }
 
 const DAY_MS = 86400000;
@@ -33,10 +36,16 @@ export function formatYMD(d: Date): string {
 export class Calendar {
   constructor(private readonly cfg: CalendarConfig) {}
 
-  /** Start (birthday) of personal year yy. */
+  /** Month (1-12) and day the personal years start on: the anchor, else the birthday. */
+  private anchor(): { month: number; day: number } {
+    const { birthMonth, birthDay, anchorMonth, anchorDay } = this.cfg;
+    return { month: anchorMonth ?? birthMonth, day: anchorDay ?? birthDay };
+  }
+
+  /** Start of personal year yy. */
   private yearStart(yy: number): Date {
-    const { birthYear, birthMonth, birthDay } = this.cfg;
-    return new Date(birthYear + yy, birthMonth - 1, birthDay);
+    const { month, day } = this.anchor();
+    return new Date(this.cfg.birthYear + yy, month - 1, day);
   }
 
   /** Calendar (y, m 1-12, d) -> personal { yy, doy }; null if before startAge. */
@@ -87,7 +96,7 @@ export class Calendar {
 
   /** Local-midnight Date of week ww's start (ww may be 53 = next week boundary). DST-safe. */
   weekStartJsDate(yy: number, ww: number): Date {
-    const { birthYear, birthMonth, birthDay } = this.cfg;
-    return new Date(birthYear + yy, birthMonth - 1, birthDay + (ww - 1) * 7);
+    const { month, day } = this.anchor();
+    return new Date(this.cfg.birthYear + yy, month - 1, day + (ww - 1) * 7);
   }
 }
