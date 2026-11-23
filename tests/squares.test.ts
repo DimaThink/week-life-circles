@@ -18,7 +18,7 @@ class FakeEl {
   classes: Set<string>;
   props: Record<string, string> = {};
   constructor(cls: string[], private readonly attrs: Record<string, string> = {}) { this.classes = new Set(cls); }
-  classList = { contains: (c: string) => this.classes.has(c), add: (c: string) => { this.classes.add(c); } };
+  classList = { contains: (c: string) => this.classes.has(c), add: (c: string) => { this.classes.add(c); }, remove: (c: string) => { this.classes.delete(c); } };
   style = { removeProperty: (k: string) => { delete this.props[k]; } };
   setCssProps(p: Record<string, string>) { Object.assign(this.props, p); }
   getAttribute(k: string) { return this.attrs[k] ?? null; }
@@ -62,6 +62,40 @@ describe('decorateSquares', () => {
     decorateSquares(root([span], []), [{ key: 'work.png', name: 'W', color: '#123456' }]);
     expect(span.props['--wcg-sq-img']).toBeUndefined();
     expect(span.props['--wcg-sq-color']).toBe('#123456');
+  });
+});
+
+describe('a square the settings do not know', () => {
+  const root = (spans: FakeEl[]) => ({ querySelectorAll: (sel: string) => (sel === 'span.sq' ? spans : []) }) as unknown as ParentNode;
+  it('is drawn as a neutral filled box, not an empty outline', () => {
+    const span = new FakeEl(['sq', 'sq-gone']);
+    decorateSquares(root([span]), sample);
+    expect(span.classes.has('wcg-sq-unknown')).toBe(true);
+  });
+  it('loses that look once the square exists', () => {
+    const span = new FakeEl(['sq', 'sq-work', 'wcg-sq-unknown']);
+    decorateSquares(root([span]), sample);
+    expect(span.classes.has('wcg-sq-unknown')).toBe(false);
+    expect(span.props['--wcg-sq-color']).toBe('#4A4A4A');
+  });
+});
+
+describe('decorating twice', () => {
+  it('never rewrites `class` when nothing changed (the class observer would loop)', () => {
+    let writes = 0;
+    const span = new FakeEl(['sq', 'sq-gone']);
+    const l = span.classList;
+    span.classList = { ...l, add: (c: string) => { writes++; l.add(c); }, remove: (c: string) => { writes++; l.remove(c); } };
+    const root = { querySelectorAll: (sel: string) => (sel === 'span.sq' ? [span] : []) } as unknown as ParentNode;
+    decorateSquares(root, sample);
+    const after = writes;
+    decorateSquares(root, sample);
+    decorateSquares(root, sample);
+    expect(writes).toBe(after);
+    const known = new FakeEl(['sq', 'sq-work']);
+    known.classList = { ...known.classList, add: () => { writes++; }, remove: () => { writes++; } };
+    decorateSquares({ querySelectorAll: (sel: string) => (sel === 'span.sq' ? [known] : []) } as unknown as ParentNode, sample);
+    expect(writes).toBe(after);
   });
 });
 

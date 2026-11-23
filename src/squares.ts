@@ -12,6 +12,14 @@ export function squareImage(q: SquareDef): string {
 
 /** Marker class for image squares embedded in a note (styled in styles.css). */
 export const SQ_IMG_CLASS = 'wcg-sq-img';
+/** Marker class for a colour span whose key is not in the settings (styled as a neutral box). */
+export const SQ_UNKNOWN_CLASS = 'wcg-sq-unknown';
+
+/** Toggle the marker only when it actually changes: touching `class` re-fires the class observer. */
+function setUnknown(span: HTMLElement, on: boolean): void {
+  if (span.classList.contains(SQ_UNKNOWN_CLASS) === on) return;
+  if (on) span.classList.add(SQ_UNKNOWN_CLASS); else span.classList.remove(SQ_UNKNOWN_CLASS);
+}
 
 /**
  * Square colours are user-defined, so they are applied per element (a CSS custom property
@@ -33,6 +41,7 @@ export function decorateSquares(
     for (const [cls, color] of colors) {
       if (span.classList.contains(cls)) {
         span.style.removeProperty('--wcg-sq-img');
+        setUnknown(span, false);
         span.setCssProps({ '--wcg-sq-color': color });
         return;
       }
@@ -40,9 +49,12 @@ export function decorateSquares(
     span.style.removeProperty('--wcg-sq-color');
     for (const [cls, name] of pictures) {
       const url = span.classList.contains(cls) ? imageUrl(name) : null;
-      if (url) { span.setCssProps({ '--wcg-sq-img': `url("${url.replace(/"/g, '%22')}")` }); return; }
+      if (url) { setUnknown(span, false); span.setCssProps({ '--wcg-sq-img': `url("${url.replace(/"/g, '%22')}")` }); return; }
     }
     span.style.removeProperty('--wcg-sq-img');
+    // a square the settings no longer list (or an image still loading) must not vanish: neutral box
+    const known = [...pictures.keys()].some(cls => span.classList.contains(cls));
+    setUnknown(span, !known);
   });
   if (images.size === 0) return;
   all('img[alt], .internal-embed[alt]').forEach(el => {

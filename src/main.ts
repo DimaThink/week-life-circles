@@ -188,12 +188,27 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
     this.refreshSquares();
     this.squareObserver = new MutationObserver(records => {
       for (const r of records) {
+        if (r.type === 'attributes') {
+          // Live Preview can set a span's class after inserting it: colour it once it becomes a square
+          const t = r.target;
+          if (t.nodeType === Node.ELEMENT_NODE && (t as Element).classList.contains('sq')) {
+            decorateSquares(t as HTMLElement, this.settings.squares, this.squareImageUrl);
+          }
+          continue;
+        }
         r.addedNodes.forEach(n => {
           if (n.nodeType === Node.ELEMENT_NODE) decorateSquares(n as HTMLElement, this.settings.squares, this.squareImageUrl);
         });
       }
     });
-    this.squareObserver.observe(activeDocument.body, { childList: true, subtree: true });
+    this.squareObserver.observe(activeDocument.body, {
+      childList: true, subtree: true, attributes: true, attributeFilter: ['class'],
+    });
+    // Belt and braces: switching notes, panes or reading/editing mode re-colours what is on screen.
+    const recolour = (): void => { this.debounce.run('recolour-squares', 150, () => this.refreshSquares()); };
+    this.registerEvent(this.app.workspace.on('layout-change', recolour));
+    this.registerEvent(this.app.workspace.on('active-leaf-change', recolour));
+    this.registerEvent(this.app.workspace.on('file-open', recolour));
   }
 
   private refreshSquares(): void {
