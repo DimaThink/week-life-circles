@@ -10,6 +10,8 @@ export interface GridHost {
   readonly app: App;
   readonly settings: Settings;
   calendar: Calendar | null; // null when settings.birthDate is unset/invalid
+  /** First and last grid year in use (from the current year, or the manual start age). */
+  ageRange: { startAge: number; endAge: number };
   weekCells: CellMap;
   dayCells: CellMap;
   weekBuiltAt: number; // 0 = cache never built
@@ -380,7 +382,7 @@ export async function renderWeekGrid(el: HTMLElement, host: GridHost): Promise<v
   info.setText(`${countCells(cells)} weeks`);
 
   const fillLink = linkFiller(host);
-  const { startAge, endAge } = host.settings;
+  const { startAge, endAge } = host.ageRange;
   const { yy: curYY, ww: curWW } = cal.personalYearWeek();
   const years = Array.from({ length: endAge - startAge + 1 }, (_, i) => i + startAge);
   const weeks = Array.from({ length: WEEKS_PER_YEAR }, (_, i) => i + 1);
@@ -455,7 +457,7 @@ export async function renderDayGrid(el: HTMLElement, host: GridHost): Promise<vo
 
   // Day view shows 10 years starting at the current personal year.
   const DAY_VIEW_YEARS = 10;
-  const startYY = curYY ?? host.settings.startAge;
+  const startYY = curYY ?? host.ageRange.startAge;
   const years = Array.from({ length: DAY_VIEW_YEARS }, (_, i) => i + startYY);
   const yearLen = new Map(years.map(yy => [yy, cal.personalYearDays(yy)]));
 

@@ -1,6 +1,6 @@
 import { Notice, Platform, Plugin, TAbstractFile, TFile, TFolder } from 'obsidian';
 import type { WorkspaceLeaf } from 'obsidian';
-import { CellMap, CellShape, Settings, DEFAULT_SETTINGS, normalizeSettings, parseBirthDate, resolveAnchor } from './config';
+import { CellMap, CellShape, Settings, DEFAULT_SETTINGS, normalizeSettings, parseBirthDate, resolveAnchor, ageRange } from './config';
 import { migrate, SavedData } from './migrate';
 import { Calendar, WEEKS_PER_YEAR } from './calendar';
 import { decorateSquares, squareImage } from './squares';
@@ -47,6 +47,7 @@ const READ_CHUNK = 64;
 export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, ModalHost {
   // Replaced once in onload, then only edited in place: immich + the setting tab hold this reference.
   settings: Settings = normalizeSettings(DEFAULT_SETTINGS);
+  ageRange = { startAge: DEFAULT_SETTINGS.startAge, endAge: DEFAULT_SETTINGS.endAge };
   calendar: Calendar | null = null;
   weekCells: CellMap = {};
   dayCells: CellMap = {};
@@ -265,19 +266,23 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
     const keys = this.squareKeys();
     return {
       week: JSON.stringify([s.weekFolder, keys]),
-      day: JSON.stringify([s.dayFolder, keys, s.birthDate, s.startAge, s.endAge, s.yearStart, s.yearStartDate]),
+      day: JSON.stringify([s.dayFolder, keys, s.birthDate, s.startAtCurrentYear, s.startAge, s.endAge, s.yearStart, s.yearStartDate]),
     };
   }
 
   private rebuildCalendar(): void {
     const b = parseBirthDate(this.settings.birthDate);
     const a = resolveAnchor(this.settings);
-    this.calendar = b && a
-      ? new Calendar({
-        ...b, startAge: this.settings.startAge, endAge: this.settings.endAge,
-        anchorMonth: a.month, anchorDay: a.day,
-      })
-      : null;
+    if (!b || !a) {
+      this.calendar = null;
+      this.ageRange = ageRange(this.settings, null);
+      return;
+    }
+    const anchor = { anchorMonth: a.month, anchorDay: a.day };
+    // The year you are in now, counted from birth (a probe calendar that starts at 0).
+    const currentAge = new Calendar({ ...b, ...anchor, startAge: 0, endAge: this.settings.endAge }).personalYearWeek().yy;
+    this.ageRange = ageRange(this.settings, currentAge);
+    this.calendar = new Calendar({ ...b, ...anchor, ...this.ageRange });
   }
 
   private scheduleCacheSave(): void {

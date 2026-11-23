@@ -82,7 +82,8 @@ an embed: `![[england.png|14]]`.
 | --- | --- |
 | Birth date | Needed before anything is shown; the default start of every grid year. |
 | Year starts | On your birthday (default), on 1 January, or on a custom day (`MM-DD`). Existing notes keep their week/year numbers, so after a change they map to different dates. |
-| Start age / End age | First and last personal year shown in the week grid. |
+| Start from the current year | On by default: the grid begins with the year you are in now and shows what is ahead. Turn it off to set the first year yourself (0 = your whole life). Notes from earlier years stay in your vault. |
+| Start age / End age | First (when the option above is off) and last personal year shown in the week grid. |
 | Week folder / Day folder | Where week and day notes are stored. |
 | Week template path / Day template path | Optional path to a note used as the week or day template instead of the built-in one. The same placeholders work in it. |
 | Week template / Day template | Text of new notes. Placeholders: `{{ww}}`, `{{yy}}`, `{{circle}}` (`{{square}}` still works), `{{date}}`, `{{photos}}` (week), `{{weekday}}` (day). The weekday is written in Obsidian's language. |

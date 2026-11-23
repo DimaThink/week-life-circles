@@ -37,14 +37,14 @@ describe('normalizeSettings', () => {
   });
   it('falls back to defaults for undefined/null/wrong-typed values', () => {
     const s = normalizeSettings({ startAge: undefined, endAge: null, weekFolder: 123, squares: null } as any);
-    expect(s.startAge).toBe(21);
+    expect(s.startAge).toBe(0);
     expect(s.endAge).toBe(100);
     expect(s.weekFolder).toBe(DEFAULT_SETTINGS.weekFolder);
     expect(s.squares).toEqual(DEFAULT_SQUARES);
   });
   it('rejects NaN ages and keeps endAge > startAge', () => {
     const s = normalizeSettings({ startAge: NaN, endAge: NaN });
-    expect(s.startAge).toBe(21);
+    expect(s.startAge).toBe(0);
     expect(s.endAge).toBe(100);
     expect(normalizeSettings({ startAge: 30, endAge: NaN }).endAge).toBeGreaterThan(30);
   });

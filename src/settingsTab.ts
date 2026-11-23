@@ -92,7 +92,16 @@ export class WeekLifeCirclesSettingTab extends PluginSettingTab {
         });
       });
     };
-    addAge('Start age', 'startAge', 'First personal year shown in the week grid.');
+    new Setting(containerEl)
+      .setName('Start from the current year')
+      .setDesc('The grid begins with the year you are in now, so it shows what is ahead. '
+        + 'Turn off to pick the first year yourself, for example 0 to see your whole life.')
+      .addToggle(t => t.setValue(s.startAtCurrentYear).onChange(v => {
+        s.startAtCurrentYear = v;
+        void save();
+        this.display(); // show or hide the start age
+      }));
+    if (!s.startAtCurrentYear) addAge('Start age', 'startAge', 'First personal year shown in the week grid (0 = from birth).');
     addAge('End age', 'endAge', 'Last personal year shown in the week grid.');
 
     // --- Squares (previewed in the grid's current view; the view is switched from the grid's toolbar) ---

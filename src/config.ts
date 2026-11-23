@@ -23,7 +23,8 @@ export interface Settings {
   birthDate: string; // "YYYY-MM-DD", "" until set
   yearStart: YearStart;
   yearStartDate: string; // "MM-DD", used when yearStart is 'custom'
-  startAge: number;
+  startAtCurrentYear: boolean; // true: the grid starts at the year you are in now
+  startAge: number; // first year shown when startAtCurrentYear is off
   endAge: number;
   weekFolder: string;
   dayFolder: string;
@@ -100,7 +101,8 @@ export const DEFAULT_SETTINGS: Settings = {
   birthDate: '',
   yearStart: 'birthday',
   yearStartDate: '',
-  startAge: 21,
+  startAtCurrentYear: true,
+  startAge: 0,
   endAge: 100,
   weekFolder: 'Week life calendar',
   dayFolder: 'Week day status',
@@ -154,6 +156,9 @@ export function normalizeSettings(s: Partial<Settings> | null | undefined): Sett
     birthDate: str('birthDate').trim(),
     yearStart: src.yearStart === 'january' || src.yearStart === 'custom' ? src.yearStart : 'birthday',
     yearStartDate: str('yearStartDate').trim(),
+    startAtCurrentYear: typeof src.startAtCurrentYear === 'boolean'
+      ? src.startAtCurrentYear
+      : !('startAge' in src), // settings saved before this option keep their start age
     startAge,
     endAge: Math.min(Math.max(num('endAge'), startAge + 1), MAX_AGE),
     weekFolder: str('weekFolder'),
@@ -230,4 +235,12 @@ export function resolveAnchor(s: Settings): { month: number; day: number } | nul
     if (c) return c;
   }
   return { month: b.birthMonth, day: b.birthDay };
+}
+
+/** The first and last grid year: from the year you are in now, or the manual start age. */
+export function ageRange(s: Settings, currentAge: number | null): { startAge: number; endAge: number } {
+  if (s.startAtCurrentYear && currentAge !== null) {
+    return { startAge: Math.max(0, Math.min(currentAge, s.endAge - 1)), endAge: s.endAge };
+  }
+  return { startAge: s.startAge, endAge: s.endAge };
 }
