@@ -1,4 +1,5 @@
 import { App, TFile } from 'obsidian';
+import { t } from './i18n';
 import type { HoverParent } from 'obsidian';
 import { Calendar, WEEKS_PER_YEAR, formatYMD, pad2 } from './calendar';
 import { Cell, CellMap, CellShape, Settings } from './config';
@@ -82,7 +83,7 @@ const ICON_SHAPE: Record<CellShape, Shape[]> = {
     { tag: 'circle', attrs: { cx: '16.5', cy: '16.5', r: '3.5' } },
   ],
 };
-const SHAPE_NAME: Record<CellShape, string> = { circle: 'Honeycomb', square: 'Squares', dots: 'Circles in columns' };
+const shapeName = (s: CellShape): string => t(`notes.shape.${s}`);
 const ICON_REFRESH: Shape[] = [
   { tag: 'path', attrs: { d: 'M21 12a9 9 0 1 1-2.64-6.36' } },
   { tag: 'path', attrs: { d: 'M21 3v6h-6' } },
@@ -285,7 +286,7 @@ function renderShell(el: HTMLElement, title: string, rootCls: string, shape: Cel
 function shapeButton(toolbar: HTMLElement, host: GridHost): void {
   const cur = host.settings.cellShape;
   const next = nextCellShape(cur);
-  const btn = iconButton(toolbar, ICON_SHAPE[cur], `View: ${SHAPE_NAME[cur]} — switch to ${SHAPE_NAME[next]}`);
+  const btn = iconButton(toolbar, ICON_SHAPE[cur], t('notes.grid.viewSwitch', { cur: shapeName(cur), next: shapeName(next) }));
   btn.addEventListener('click', () => host.setCellShape(next));
 }
 
@@ -293,7 +294,7 @@ function renderNoBirthDate(el: HTMLElement): void {
   el.empty();
   el.createDiv({
     cls: 'wcg-status',
-    text: 'Set your birth date in the plugin settings to see your calendar.',
+    text: t('notes.grid.noBirthDate'),
   });
 }
 
@@ -395,19 +396,19 @@ export async function renderWeekGrid(el: HTMLElement, host: GridHost): Promise<v
   if (cal === null) { renderNoBirthDate(el); return; }
 
   const { outer, root, headerTrack, toolbar, info } = renderShell(
-    el, 'Life in weeks', host.transposed ? 'wcg-view-root wcg-transposed' : 'wcg-view-root', host.settings.cellShape);
+    el, t('notes.grid.lifeWeeks'), host.transposed ? 'wcg-view-root wcg-transposed' : 'wcg-view-root', host.settings.cellShape);
   const transposed = host.transposed;
   shapeButton(toolbar, host);
   const rotateBtn = iconButton(
     toolbar,
     transposed ? ICON_COLS : ICON_ROWS,
-    transposed ? 'Show weeks as rows' : 'Show years as rows',
+    transposed ? t('notes.grid.weeksAsRows') : t('notes.grid.yearsAsRows'),
   );
   rotateBtn.addEventListener('click', () => host.setTransposed(!host.transposed));
-  rebuildButton(toolbar, 'Rebuild calendar cache', () => host.rebuildWeekCache(), () => renderWeekGrid(el, host));
+  rebuildButton(toolbar, t('notes.grid.rebuildWeek'), () => host.rebuildWeekCache(), () => renderWeekGrid(el, host));
 
-  const cells = await ensureCells(root, 'Building cache…', host.weekCells, host.weekBuiltAt, () => host.rebuildWeekCache());
-  info.setText(`${countCells(cells)} weeks`);
+  const cells = await ensureCells(root, t('notes.grid.buildingWeek'), host.weekCells, host.weekBuiltAt, () => host.rebuildWeekCache());
+  info.setText(t('notes.grid.weekCount', { n: countCells(cells) }));
 
   const fillLink = linkFiller(host);
   const { startAge, endAge } = host.ageRange;
@@ -427,7 +428,7 @@ export async function renderWeekGrid(el: HTMLElement, host: GridHost): Promise<v
     if (d) {
       fillLink(cell, d);
     } else {
-      cell.setAttribute('title', `Create ${pad2(ww)}.${pad2(yy)}`);
+      cell.setAttribute('title', t('notes.grid.createTitle', { name: `${pad2(ww)}.${pad2(yy)}` }));
       cell.addEventListener('click', () => host.openCreateWeek(yy, ww));
       makeKeyboardActivatable(cell);
     }
@@ -470,13 +471,13 @@ export async function renderDayGrid(el: HTMLElement, host: GridHost): Promise<vo
   if (cal === null) { renderNoBirthDate(el); return; }
 
   const { outer, root, headerTrack, toolbar, info } = renderShell(
-    el, 'Life in days', 'wcg-view-root wcg-day-mode', host.settings.cellShape);
+    el, t('notes.grid.lifeDays'), 'wcg-view-root wcg-day-mode', host.settings.cellShape);
   shapeButton(toolbar, host);
-  const todayBtn = iconButton(toolbar, ICON_TODAY, 'Scroll to today');
-  rebuildButton(toolbar, 'Rebuild day cache', () => host.rebuildDayCache(), () => renderDayGrid(el, host));
+  const todayBtn = iconButton(toolbar, ICON_TODAY, t('notes.grid.today'));
+  rebuildButton(toolbar, t('notes.grid.rebuildDay'), () => host.rebuildDayCache(), () => renderDayGrid(el, host));
 
-  const cells = await ensureCells(root, 'Building day cache…', host.dayCells, host.dayBuiltAt, () => host.rebuildDayCache());
-  info.setText(`${countCells(cells)} days`);
+  const cells = await ensureCells(root, t('notes.grid.buildingDay'), host.dayCells, host.dayBuiltAt, () => host.rebuildDayCache());
+  info.setText(t('notes.grid.dayCount', { n: countCells(cells) }));
 
   const fillLink = linkFiller(host);
   const today = new Date();
@@ -529,7 +530,7 @@ export async function renderDayGrid(el: HTMLElement, host: GridHost): Promise<vo
         if (d) {
           fillLink(cell, d);
         } else {
-          cell.setAttribute('title', `Create ${formatYMD(cal.personalToDate(yy, doy))}`);
+          cell.setAttribute('title', t('notes.grid.createTitle', { name: formatYMD(cal.personalToDate(yy, doy)) }));
           cell.addEventListener('click', () => host.openCreateDay(yy, doy));
           makeKeyboardActivatable(cell);
         }

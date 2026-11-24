@@ -1,4 +1,5 @@
 import { Modal, Notice, Setting, TFile } from 'obsidian';
+import { t } from '../i18n';
 import { formatDMY, pad2, WEEKS_PER_YEAR } from '../calendar';
 import { buildWeekNote, PHOTO_IMAGE_EXTS } from '../templates';
 import type { ImmichAsset } from '../immich';
@@ -7,7 +8,6 @@ import { weekNotePath } from '../weekFiles';
 import { defaultSquareKey, renderSquarePicker } from './swatches';
 import type { ModalHost } from './createDayModal';
 
-const DROP_HINT = 'Drop photos / videos here or click to upload';
 
 // Lower-cased extension of a file name, with jpeg folded into jpg
 function fileExt(name: string): string {
@@ -46,33 +46,33 @@ export class CreateWeekModal extends Modal {
   onOpen(): void {
     const { contentEl } = this;
     this.modalEl.addClass('wcg-create-modal');
-    contentEl.createEl('h2', { text: 'Create week file' });
+    contentEl.createEl('h2', { text: t('notes.createWeek.title') });
     this.renderTarget(contentEl);
-    renderSquarePicker(this.app, contentEl, 'Week type', this.host.settings.squares, this.square,
+    renderSquarePicker(this.app, contentEl, t('notes.weekType'), this.host.settings.squares, this.square,
       k => { this.square = k; });
     this.renderPhotoUpload(contentEl);
     if (this.host.immich.available && this.host.calendar) this.renderImmichPicker(contentEl);
     new Setting(contentEl)
-      .addButton(btn => btn.setButtonText('Create').setCta().onClick(() => { void this.create(); }));
+      .addButton(btn => btn.setButtonText(t('notes.create')).setCta().onClick(() => { void this.create(); }));
   }
 
   private renderTarget(contentEl: HTMLElement): void {
     if (this.prefilled) {
-      contentEl.createEl('p', { text: `Week ${this.ww}, personal year ${this.yy}`, cls: 'setting-item-description' });
+      contentEl.createEl('p', { text: t('notes.week.prefilled', { ww: this.ww, yy: this.yy }), cls: 'setting-item-description' });
       return;
     }
     new Setting(contentEl)
-      .setName('Week number (01–52)')
-      .addText(t => t.setPlaceholder('02').onChange(v => { this.ww = v.trim(); this.scheduleImmichReload(); }));
+      .setName(t('notes.week.numberName'))
+      .addText(tx => tx.setPlaceholder('02').onChange(v => { this.ww = v.trim(); this.scheduleImmichReload(); }));
     new Setting(contentEl)
-      .setName('Personal year')
-      .addText(t => t.setPlaceholder('28').onChange(v => { this.yy = v.trim(); this.scheduleImmichReload(); }));
+      .setName(t('notes.personalYear'))
+      .addText(tx => tx.setPlaceholder('28').onChange(v => { this.yy = v.trim(); this.scheduleImmichReload(); }));
   }
 
   private renderPhotoUpload(contentEl: HTMLElement): void {
-    contentEl.createDiv({ text: 'Week photo (optional)', cls: 'wcg-section-label' });
+    contentEl.createDiv({ text: t('notes.week.photoLabel'), cls: 'wcg-section-label' });
     const dropZone = contentEl.createDiv({ cls: 'wcg-drop-zone' });
-    const dropLabel = dropZone.createDiv({ text: DROP_HINT, cls: 'wcg-drop-label' });
+    const dropLabel = dropZone.createDiv({ text: t('notes.dropHint'), cls: 'wcg-drop-label' });
     const photoInput = dropZone.createEl('input', {
       cls: 'wcg-file-input',
       attr: { type: 'file', accept: '.jpg,.jpeg,.png,.webp,.mp4,.mov,.avi,.webm,.mkv', multiple: 'true' },
@@ -82,7 +82,7 @@ export class CreateWeekModal extends Modal {
     const updateZone = (): void => {
       const n = this.photoFiles.length;
       dropZone.toggleClass('is-active', n > 0);
-      dropLabel.textContent = n ? `✅ ${n} file(s) — drop more to append` : DROP_HINT;
+      dropLabel.textContent = n ? `✅ ${t('notes.files.count', { n })}` : t('notes.dropHint');
     };
 
     const renderFileList = (): void => {
@@ -99,7 +99,7 @@ export class CreateWeekModal extends Modal {
         const rm = row.createSpan({ text: '✕', cls: 'wcg-file-remove' });
         rm.addEventListener('click', e => { e.stopPropagation(); this.photoFiles.splice(i, 1); renderFileList(); updateZone(); });
       });
-      const clear = fileList.createDiv({ text: 'Clear all', cls: 'wcg-file-clear' });
+      const clear = fileList.createDiv({ text: t('notes.files.clearAll'), cls: 'wcg-file-clear' });
       clear.addEventListener('click', e => { e.stopPropagation(); this.photoFiles = []; renderFileList(); updateZone(); });
     };
 
@@ -124,7 +124,7 @@ export class CreateWeekModal extends Modal {
   // ── Immich picker (only rendered when host.immich.available && calendar) ──
 
   private renderImmichPicker(contentEl: HTMLElement): void {
-    this.immichHeader = contentEl.createDiv({ text: 'From Immich', cls: 'wcg-section-label' });
+    this.immichHeader = contentEl.createDiv({ text: t('notes.immich.header'), cls: 'wcg-section-label' });
     this.immichBox = contentEl.createDiv({ cls: 'wcg-immich-box' });
     this.reloadImmich();
   }
@@ -147,11 +147,11 @@ export class CreateWeekModal extends Modal {
     box.empty();
     this.revokeImmichUrls();
     this.immichSelected.clear();
-    header.textContent = 'From Immich';
-    const note = box.createDiv({ text: 'Loading photos…', cls: 'wcg-immich-note' });
+    header.textContent = t('notes.immich.header');
+    const note = box.createDiv({ text: t('notes.immich.loading'), cls: 'wcg-immich-note' });
     const ww = parseInt(this.ww, 10), yy = parseInt(this.yy, 10);
     if (Number.isNaN(ww) || Number.isNaN(yy) || ww < 1 || ww > WEEKS_PER_YEAR) {
-      note.textContent = 'Enter week + year to load that week’s photos';
+      note.textContent = t('notes.immich.enterWeek');
       return;
     }
     void this.loadImmichAssets(header, box, note, ww, yy, this.immichToken);
@@ -168,8 +168,8 @@ export class CreateWeekModal extends Modal {
     } catch (e) {
       console.error('week-life-circles: Immich search failed', e);
       if (token !== this.immichToken) return;
-      note.textContent = 'Immich unavailable — use manual upload';
-      new Notice('Immich unavailable — use manual upload');
+      note.textContent = t('notes.immich.unavailable');
+      new Notice(t('notes.immich.unavailable'));
       return;
     }
     if (token !== this.immichToken) return; // stale (user changed ww/yy)
@@ -177,18 +177,18 @@ export class CreateWeekModal extends Modal {
     last.setDate(last.getDate() - 1);
     const fmtD = (d: Date): string => `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}`;
     const range = `${fmtD(since)}–${fmtD(last)}`;
-    if (!items.length) { note.textContent = `No photos for ${range}`; return; }
+    if (!items.length) { note.textContent = t('notes.immich.none', { range }); return; }
     note.remove();
 
     const updateHeader = (): void => {
-      header.textContent = `From Immich — ${items.length} for ${range}, ${this.immichSelected.size} selected`;
+      header.textContent = t('notes.immich.headerCount', { count: items.length, range, selected: this.immichSelected.size });
     };
     updateHeader();
 
     const grid = box.createDiv({ cls: 'wcg-immich-grid' });
     for (const a of items) this.makeImmichTile(grid, a, updateHeader, token);
     if (total > items.length) {
-      box.createDiv({ text: `Showing first ${items.length} of ${total}`, cls: 'wcg-immich-more' });
+      box.createDiv({ text: t('notes.immich.showingFirst', { shown: items.length, total }), cls: 'wcg-immich-more' });
     }
   }
 
@@ -242,14 +242,14 @@ export class CreateWeekModal extends Modal {
   private async doCreate(): Promise<void> {
     // an empty field must not pass as "00"
     if (!/^\d{1,2}$/.test(this.ww) || !/^\d{1,3}$/.test(this.yy)) {
-      new Notice('Please enter a week from 01 to 52 and a personal year');
+      new Notice(t('notes.week.invalid'));
       return;
     }
     const ww = pad2(this.ww);
     const yy = pad2(this.yy);
 
     if (Number(ww) < 1 || Number(ww) > WEEKS_PER_YEAR) {
-      new Notice('Please enter a week from 01 to 52 and a personal year');
+      new Notice(t('notes.week.invalid'));
       return;
     }
 
@@ -257,7 +257,7 @@ export class CreateWeekModal extends Modal {
     // server-side), videos as originals. Any failure aborts before writing.
     const immichFiles: PhotoFile[] = [];
     if (this.immichSelected.size) {
-      new Notice(`⬇ Downloading ${this.immichSelected.size} file(s) from Immich…`);
+      new Notice(`⬇ ${t('notes.immich.downloading', { n: this.immichSelected.size })}`);
       try {
         for (const [id, a] of this.immichSelected) {
           if (a.type === 'VIDEO') {
@@ -269,7 +269,7 @@ export class CreateWeekModal extends Modal {
           }
         }
       } catch (e) {
-        new Notice(`❌ Immich download failed: ${(e as Error).message}`);
+        new Notice(`❌ ${t('notes.immich.downloadFailed', { error: (e as Error).message })}`);
         return;
       }
     }
@@ -293,7 +293,7 @@ export class CreateWeekModal extends Modal {
       await ensureFolder(vault, weekFolder);
       await ensureFolder(vault, `${weekFolder}/${yy}`);
       if (vault.getAbstractFileByPath(filePath)) {
-        new Notice(`Already exists: ${filePath}`);
+        new Notice(t('notes.exists', { path: filePath }));
         return;
       }
       const file = await vault.create(filePath, body);
@@ -308,7 +308,7 @@ export class CreateWeekModal extends Modal {
         }
       }
       this.close();
-      new Notice(`✅ Created ${ww}.${yy}.md`);
+      new Notice(`✅ ${t('notes.created', { name: `${ww}.${yy}.md` })}`);
       await workspace.getLeaf(false).openFile(file);
     } catch (e) {
       new Notice(`❌ ${(e as Error).message}`);

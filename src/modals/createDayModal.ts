@@ -1,4 +1,5 @@
 import { App, Modal, Notice, Setting, TFile } from 'obsidian';
+import { t } from '../i18n';
 import type { Settings } from '../config';
 import { Calendar, formatYMD, pad2, weekOfDoy } from '../calendar';
 import type { ImmichClient } from '../immich';
@@ -33,16 +34,16 @@ export class CreateDayModal extends Modal {
 
   onOpen(): void {
     const { contentEl } = this;
-    contentEl.createEl('h2', { text: 'Create day file' });
+    contentEl.createEl('h2', { text: t('notes.createDay.title') });
     if (!this.date) {
-      contentEl.createEl('p', { text: 'Calendar is not configured.', cls: 'setting-item-description' });
+      contentEl.createEl('p', { text: t('notes.day.noCalendar'), cls: 'setting-item-description' });
       return;
     }
     contentEl.createEl('p', { text: `${this.dateStr} · ${this.weekdayName}`, cls: 'setting-item-description' });
-    renderSquarePicker(this.app, contentEl, 'Day type', this.host.settings.squares, this.square,
+    renderSquarePicker(this.app, contentEl, t('notes.dayType'), this.host.settings.squares, this.square,
       k => { this.square = k; });
     new Setting(contentEl)
-      .addButton(btn => btn.setButtonText('Create').setCta().onClick(() => { void this.create(); }));
+      .addButton(btn => btn.setButtonText(t('notes.create')).setCta().onClick(() => { void this.create(); }));
   }
 
   private async renderBody(date: Date): Promise<string> {
@@ -86,7 +87,7 @@ export class CreateDayModal extends Modal {
       const filePath = `${folder}/${this.dateStr}.md`;
 
       if (vault.getAbstractFileByPath(filePath)) {
-        new Notice(`Already exists: ${filePath}`);
+        new Notice(t('notes.exists', { path: filePath }));
         return;
       }
       const body = await this.renderBody(this.date);
@@ -94,7 +95,7 @@ export class CreateDayModal extends Modal {
       await ensureFolder(vault, folder);
       const file = await vault.create(filePath, body);
       this.close();
-      new Notice(`✅ Created ${this.dateStr}.md`);
+      new Notice(`✅ ${t('notes.created', { name: `${this.dateStr}.md` })}`);
       // New tab so the day calendar stays visible behind it
       await workspace.getLeaf('tab').openFile(file);
     } catch (e) {

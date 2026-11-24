@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import { App, FuzzySuggestModal, Modal, Notice, Setting, TFile, TextComponent, normalizePath } from 'obsidian';
 import type { CellShape, SquareDef } from './config';
 import { DEFAULT_SQUARES } from './config';
@@ -94,7 +95,7 @@ function imageNamesTaken(app: App, squareKeys: string[]): { has(name: string): b
 class VaultImageModal extends FuzzySuggestModal<TFile> {
   constructor(app: App, private readonly onPick: (f: TFile) => void) {
     super(app);
-    this.setPlaceholder('Pick a PNG or JPG from your vault');
+    this.setPlaceholder(t('circles.pickVaultImage'));
   }
   /** Only files whose bare name resolves back to them (a square stores just the name). */
   getItems(): TFile[] {
@@ -112,7 +113,7 @@ class ConfirmModal extends Modal {
   onOpen(): void {
     this.contentEl.createEl('p', { text: this.text });
     new Setting(this.contentEl)
-      .addButton(b => b.setButtonText('Cancel').onClick(() => this.close()))
+      .addButton(b => b.setButtonText(t('circles.cancel')).onClick(() => this.close()))
       .addButton(b => {
         // red "danger" button; setWarning() is deprecated and its replacement needs Obsidian 1.13
         b.buttonEl.addClass('mod-warning');
@@ -129,15 +130,15 @@ class ToImageModal extends Modal {
     super(app);
   }
   onOpen(): void {
-    this.setTitle(`Use an image for "${this.name}"`);
+    this.setTitle(t('circles.toImageTitle', { name: this.name }));
     this.contentEl.createEl('p', {
-      text: 'Notes that already use this circle keep pointing at it and will show the image instead of the colour.',
+      text: t('circles.toImageDesc'),
       cls: 'setting-item-description',
     });
     new Setting(this.contentEl)
-      .addButton(b => b.setButtonText('From vault…').onClick(() => { this.close(); this.fromVault(); }))
+      .addButton(b => b.setButtonText(t('circles.fromVault')).onClick(() => { this.close(); this.fromVault(); }))
       // the file picker opens straight from this tap (phones require that); close once a picture is in
-      .addButton(b => b.setButtonText('Upload…').setCta().onClick(() => {
+      .addButton(b => b.setButtonText(t('circles.upload')).setCta().onClick(() => {
         void this.upload(this.contentEl).then(done => { if (done) this.close(); });
       }));
   }
@@ -191,7 +192,7 @@ export class SquareEditor {
       renderSquarePreview(app, item, q, shape);
       this.stripLabels.set(q, item.createDiv({ cls: 'wcg-sq-strip-label', text: q.name }));
     }
-    if (settings.squares.length === 0) strip.createDiv({ cls: 'setting-item-description', text: 'No circles yet — add one below.' });
+    if (settings.squares.length === 0) strip.createDiv({ cls: 'setting-item-description', text: t('circles.noCircles') });
 
     settings.squares.forEach((q, i) => this.renderRow(el, q, i));
     this.renderAdd(el);
@@ -201,13 +202,12 @@ export class SquareEditor {
   private renderRestore(parent: HTMLElement): void {
     const { app, settings } = this.host;
     new Setting(parent)
-      .setName('Default circles')
-      .setDesc('Replace the list below with the seven default circles, then adjust it to taste.')
-      .addButton(b => b.setButtonText('Restore defaults').onClick(() => {
+      .setName(t('circles.defaultsName'))
+      .setDesc(t('circles.defaultsDesc'))
+      .addButton(b => b.setButtonText(t('circles.restoreDefaults')).onClick(() => {
         new ConfirmModal(app,
-          `Replace your ${settings.squares.length} circle${settings.squares.length === 1 ? '' : 's'} with the defaults? `
-          + 'Notes that use a circle the defaults do not have will show it as empty until you add it again.',
-          'Replace',
+          t(settings.squares.length === 1 ? 'circles.restoreConfirmOne' : 'circles.restoreConfirmMany', { n: settings.squares.length }),
+          t('circles.replace'),
           () => {
             settings.squares.splice(0, settings.squares.length, ...DEFAULT_SQUARES.map(q => ({ ...q })));
             void this.saveNow().then(() => this.render());
@@ -231,18 +231,18 @@ export class SquareEditor {
     const preview = renderSquarePreview(app, row.nameEl, q, settings.cellShape);
     row.nameEl.addClass('wcg-sq-row-name');
     const file = q.color ? null : app.metadataCache.getFirstLinkpathDest(squareImage(q), '');
-    row.setDesc(q.color ? (i === 0 ? 'Colour · default for new notes' : 'Colour')
-      : file ? `Image · ${file.name}${i === 0 ? ' · default for new notes' : ''}`
-        : `Image missing: ${squareImage(q)} — upload one to restore it`);
+    row.setDesc(q.color ? (i === 0 ? t('circles.colourDefault') : t('circles.colour'))
+      : file ? t(i === 0 ? 'circles.imageDefault' : 'circles.imageFile', { file: file.name })
+        : t('circles.imageMissing', { image: squareImage(q) }));
     if (file) row.descEl.setAttribute('title', file.path);
 
     // name sits next to its preview, not among the buttons: on a phone the control
     // row is too narrow and squeezed the field down to a single letter
-    ((t: TextComponent) => {
-      t.setPlaceholder('Name').setValue(q.name);
-      t.inputEl.addClass('wcg-sq-name-input');
+    ((tc: TextComponent) => {
+      tc.setPlaceholder(t('circles.name')).setValue(q.name);
+      tc.inputEl.addClass('wcg-sq-name-input');
       // saved as you type (debounced; flushed when settings close), no re-render: focus stays
-      t.onChange(v => {
+      tc.onChange(v => {
         const name = v.trim();
         if (!name) return;
         q.name = name;
@@ -263,19 +263,19 @@ export class SquareEditor {
       });
     } else {
       row.addButton(b => b
-        .setButtonText(file ? 'Replace image' : 'Upload image')
-        .setTooltip('Pick an image; it is shrunk to a small PNG/JPG and saved under the same name, so existing notes keep working.')
+        .setButtonText(file ? t('circles.replaceImage') : t('circles.uploadImage'))
+        .setTooltip(t('circles.imageTooltip'))
         .onClick(() => {
           if (!file) { void this.replaceImage(q, row.controlEl); return; }
           new ConfirmModal(app,
-            `Replace ${file.path} with a new picture? The file is overwritten with a small (≤${SQUARE_IMAGE_MAX}px) version; anything else that embeds this file will show the new picture too.`,
-            'Choose picture', () => { void this.replaceImage(q, row.controlEl); }).open();
+            t('circles.replaceImageConfirm', { path: file.path, max: SQUARE_IMAGE_MAX }),
+            t('circles.choosePicture'), () => { void this.replaceImage(q, row.controlEl); }).open();
         }));
     }
 
     // switch type, keeping the key: existing notes follow the square to its new look
     if (q.color) {
-      row.addExtraButton(b => b.setIcon('image').setTooltip('Use an image instead of the colour').onClick(() => {
+      row.addExtraButton(b => b.setIcon('image').setTooltip(t('circles.toImageTip')).onClick(() => {
         new ToImageModal(app, q.name, anchor => this.convertToUpload(q, anchor), () => {
           new VaultImageModal(app, f => {
             q.color = null;
@@ -285,21 +285,21 @@ export class SquareEditor {
         }).open();
       }));
     } else {
-      row.addExtraButton(b => b.setIcon('palette').setTooltip('Use a colour instead of the image').onClick(() => {
+      row.addExtraButton(b => b.setIcon('palette').setTooltip(t('circles.toColourTip')).onClick(() => {
         q.color = '#9F8CAE';
         delete q.image; // the picture file itself stays in the vault
         void this.saveNow().then(() => this.render());
       }));
     }
 
-    row.addExtraButton(b => b.setIcon('arrow-up').setTooltip('Move up').setDisabled(i === 0)
+    row.addExtraButton(b => b.setIcon('arrow-up').setTooltip(t('circles.moveUp')).setDisabled(i === 0)
       .onClick(() => { void this.move(i, i - 1); }));
-    row.addExtraButton(b => b.setIcon('arrow-down').setTooltip('Move down').setDisabled(i === settings.squares.length - 1)
+    row.addExtraButton(b => b.setIcon('arrow-down').setTooltip(t('circles.moveDown')).setDisabled(i === settings.squares.length - 1)
       .onClick(() => { void this.move(i, i + 1); }));
-    row.addExtraButton(b => b.setIcon('trash').setTooltip('Delete').onClick(() => {
+    row.addExtraButton(b => b.setIcon('trash').setTooltip(t('circles.delete')).onClick(() => {
       new ConfirmModal(app,
-        `Delete the circle "${q.name}"? Notes that use it keep their text, but it will no longer show a colour or image in the grid.`,
-        'Delete', () => {
+        t('circles.deleteConfirm', { name: q.name }),
+        t('circles.delete'), () => {
           const at = settings.squares.indexOf(q);
           if (at !== -1) settings.squares.splice(at, 1);
           void this.saveNow().then(() => this.render());
@@ -331,7 +331,7 @@ export class SquareEditor {
       return true;
     } catch (e) {
       console.error('week-life-circles: square image upload failed', e);
-      new Notice(`Could not use that image: ${(e as Error).message}`);
+      new Notice(t('circles.imageFail', { msg: (e as Error).message }));
       return false;
     }
   }
@@ -342,7 +342,7 @@ export class SquareEditor {
     const pic = squareImage(q);
     const existing = app.metadataCache.getFirstLinkpathDest(pic, '');
     if (!existing && pic.includes('/')) {
-      new Notice(`"${pic}" names a folder too, so it can't be restored by upload. Add a new circle instead.`);
+      new Notice(t('circles.folderNotice', { pic }));
       return;
     }
     const picked = await pickImageFile(anchor);
@@ -352,11 +352,11 @@ export class SquareEditor {
       if (existing) await app.vault.modifyBinary(existing, bytes);
       else await createSquareImage(app, pic, bytes);
       await this.saveNow(); // re-render open grids so they pick up the new image
-      new Notice(`Image for "${q.name}" updated.`);
+      new Notice(t('circles.imageUpdated', { name: q.name }));
       this.render();
     } catch (e) {
       console.error('week-life-circles: square image upload failed', e);
-      new Notice(`Could not use that image: ${(e as Error).message}`);
+      new Notice(t('circles.imageFail', { msg: (e as Error).message }));
     }
   }
 
@@ -367,7 +367,7 @@ export class SquareEditor {
 
   private renderAdd(parent: HTMLElement): void {
     const { app, settings } = this.host;
-    const add = new Setting(parent).setName('Add a circle').setClass('wcg-sq-add');
+    const add = new Setting(parent).setName(t('circles.addCircle')).setClass('wcg-sq-add');
 
     // live preview of the square being added
     const previewHost = add.nameEl.createDiv({ cls: 'wcg-sq-add-preview' });
@@ -384,25 +384,25 @@ export class SquareEditor {
       }
     };
     drawPreview();
-    add.setDesc(this.newMode === 'color' ? 'A colour circle.'
-      : this.pending?.kind === 'vault' ? `Uses ${this.pending.file.path}.`
-        : this.pending?.kind === 'upload' ? 'Uploaded image — saved to your attachments folder when you add it.'
-          : 'Upload an image (e.g. a flag) or pick one already in your vault.');
+    add.setDesc(this.newMode === 'color' ? t('circles.colourCircle')
+      : this.pending?.kind === 'vault' ? t('circles.usesFile', { path: this.pending.file.path })
+        : this.pending?.kind === 'upload' ? t('circles.uploadedDesc')
+          : t('circles.uploadDesc'));
 
-    add.addText(t => {
-      t.setPlaceholder('Name').setValue(this.newName).onChange(v => { this.newName = v; });
-      t.inputEl.addClass('wcg-sq-name-input');
+    add.addText(tc => {
+      tc.setPlaceholder(t('circles.name')).setValue(this.newName).onChange(v => { this.newName = v; });
+      tc.inputEl.addClass('wcg-sq-name-input');
     });
     add.addDropdown(d => d
-      .addOption('color', 'Colour')
-      .addOption('image', 'Image')
+      .addOption('color', t('circles.colour'))
+      .addOption('image', t('circles.image'))
       .setValue(this.newMode)
       .onChange(v => { this.newMode = v === 'image' ? 'image' : 'color'; this.render(); }));
 
     if (this.newMode === 'color') {
       add.addColorPicker(cp => cp.setValue(this.newColor).onChange(v => { this.newColor = v; drawPreview(); }));
     } else {
-      add.addButton(b => b.setButtonText('Upload…').onClick(() => {
+      add.addButton(b => b.setButtonText(t('circles.upload')).onClick(() => {
         void (async () => {
           const picked = await pickImageFile(add.controlEl);
           if (!picked) return;
@@ -412,11 +412,11 @@ export class SquareEditor {
             if (!this.newName.trim()) this.newName = picked.name.replace(/\.[^.]+$/, '');
             this.render();
           } catch (e) {
-            new Notice(`Could not read that image: ${(e as Error).message}`);
+            new Notice(t('circles.readFail', { msg: (e as Error).message }));
           }
         })();
       }));
-      add.addButton(b => b.setButtonText('From vault…').onClick(() => {
+      add.addButton(b => b.setButtonText(t('circles.fromVault')).onClick(() => {
         new VaultImageModal(app, f => {
           this.setPending({ kind: 'vault', file: f });
           if (!this.newName.trim()) this.newName = f.basename;
@@ -425,13 +425,13 @@ export class SquareEditor {
       }));
     }
 
-    add.addButton(b => b.setButtonText('Add').setCta().onClick(() => { void this.addSquare(); }));
+    add.addButton(b => b.setButtonText(t('circles.add')).setCta().onClick(() => { void this.addSquare(); }));
   }
 
   private async addSquare(): Promise<void> {
     const { app, settings } = this.host;
     const name = this.newName.trim();
-    if (!name) { new Notice('Give the circle a name first.'); return; }
+    if (!name) { new Notice(t('circles.nameFirst')); return; }
     const keys = settings.squares.map(q => q.key);
     let sq: SquareDef;
     try {
@@ -440,7 +440,7 @@ export class SquareEditor {
       } else if (this.pending?.kind === 'vault') {
         // notes match squares by name without extension: rest.jpg would read as rest.png's notes
         if (squareClassClash(this.pending.file.name, keys)) {
-          new Notice(`A circle already uses the name "${this.pending.file.basename}". Rename the file first.`);
+          new Notice(t('circles.nameClash', { name: this.pending.file.basename }));
           return;
         }
         sq = { key: this.pending.file.name, name, color: null };
@@ -449,15 +449,15 @@ export class SquareEditor {
         const file = await createSquareImage(app, uniqueImageName(slugify(name), taken), this.pending.bytes);
         sq = { key: file.name, name, color: null };
       } else {
-        new Notice('Upload an image or pick one from your vault first.');
+        new Notice(t('circles.imageFirst'));
         return;
       }
     } catch (e) {
       console.error('week-life-circles: adding square failed', e);
-      new Notice(`Could not add the circle: ${(e as Error).message}`);
+      new Notice(t('circles.addFail', { msg: (e as Error).message }));
       return;
     }
-    if (settings.squares.some(q => q.key === sq.key)) { new Notice('That image is already a circle.'); return; }
+    if (settings.squares.some(q => q.key === sq.key)) { new Notice(t('circles.alreadyCircle')); return; }
     settings.squares.push(sq);
     this.newName = '';
     this.setPending(null);

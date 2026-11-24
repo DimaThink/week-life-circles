@@ -81,6 +81,7 @@ an embed: `![[england.png|14]]`.
 
 | Setting | What it does |
 | --- | --- |
+| Language | Auto (follows Obsidian), English, Ukrainian or Polish: the settings, dialogs, buttons and notices. Command names update after reloading the plugin. |
 | Birth date | Needed before anything is shown; the default start of every grid year. |
 | Year starts | On your birthday (default), on 1 January, or on a custom day (`MM-DD`). Existing notes keep their week/year numbers, so after a change they map to different dates. |
 | Start from year | The first year of the week grid: the current year (default, moves forward on its own) or any year from 0 (your whole life) up to now. Notes from earlier years stay in your vault. |

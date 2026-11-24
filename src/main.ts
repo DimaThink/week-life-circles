@@ -1,4 +1,6 @@
 import { Notice, Platform, Plugin, TAbstractFile, TFile, TFolder } from 'obsidian';
+import { resolveLang, setLang, t } from './i18n';
+import { obsidianLocale } from './momentFmt';
 import type { WorkspaceLeaf } from 'obsidian';
 import { CellMap, CellShape, Settings, DEFAULT_SETTINGS, normalizeSettings, parseBirthDate, resolveAnchor, ageRange } from './config';
 import { migrate, SavedData } from './migrate';
@@ -77,6 +79,7 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
     const normalized = normalizeSettings(data.settings);
     const changed = JSON.stringify(normalized) !== JSON.stringify(data.settings);
     this.settings = normalized;
+    setLang(resolveLang(normalized.language, obsidianLocale()));
     this.weekCells = data.cells ?? {};
     this.weekBuiltAt = data.builtAt ?? 0;
     this.dayCells = data.dayCells ?? {};
@@ -94,7 +97,7 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
     this.registerView(DAY_VIEW_TYPE, leaf => new DayCalendarView(leaf, this));
 
     this.addRibbonIcon('calendar-days', 'Week Life Circles', () => { void this.activateWeekView(); });
-    this.addRibbonIcon('calendar', 'Day calendar', () => { void this.activateDayView(); });
+    this.addRibbonIcon('calendar', t('notes.main.dayRibbon'), () => { void this.activateDayView(); });
 
     if (Platform.isMobile) {
       this.fab = activeDocument.body.createEl('button', {
@@ -105,14 +108,14 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
       this.fab.addEventListener('click', () => { void this.activateWeekView(); });
     }
 
-    this.addCommand({ id: 'open-week-view', name: 'Open week calendar', callback: () => { void this.activateWeekView(); } });
-    this.addCommand({ id: 'open-day-view', name: 'Open day calendar', callback: () => { void this.activateDayView(); } });
+    this.addCommand({ id: 'open-week-view', name: t('notes.main.openWeek'), callback: () => { void this.activateWeekView(); } });
+    this.addCommand({ id: 'open-day-view', name: t('notes.main.openDay'), callback: () => { void this.activateDayView(); } });
     this.addCommand({
       id: 'create-next-week',
-      name: 'Create next week file',
+      name: t('notes.main.createNext'),
       callback: () => {
         const next = this.nextWeekToCreate();
-        if (!next) { new Notice('Set a valid birth date in Week Life Circles settings first.'); return; }
+        if (!next) { new Notice(t('notes.main.needBirth')); return; }
         this.openCreateWeek(next.yy, next.ww);
       },
     });
@@ -120,7 +123,7 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
     this.registerHoverLinkSource(HOVER_SOURCE, { display: 'Week Life Circles', defaultMod: false });
     this.addCommand({
       id: 'create-week',
-      name: 'Create week file',
+      name: t('notes.createWeek.title'),
       callback: () => { new CreateWeekModal(this).open(); },
     });
 
@@ -252,6 +255,7 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
   async onExternalSettingsChange(): Promise<void> {
     const { data } = migrate(await this.loadData());
     Object.assign(this.settings, normalizeSettings(data.settings));
+    setLang(resolveLang(this.settings.language, obsidianLocale()));
     this.weekCells = data.cells ?? {};
     this.weekBuiltAt = data.builtAt ?? 0;
     this.dayCells = data.dayCells ?? {};

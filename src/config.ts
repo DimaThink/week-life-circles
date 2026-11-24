@@ -22,7 +22,11 @@ export type NoteShape = 'circle' | 'square';
 /** Where each grid year starts: on the birthday, on 1 January, or on a day of your choice. */
 export type YearStart = 'birthday' | 'january' | 'custom';
 
+/** Interface language: follow Obsidian's, or force one. */
+export type Language = 'auto' | 'en' | 'uk' | 'pl';
+
 export interface Settings {
+  language: Language;
   birthDate: string; // "YYYY-MM-DD", "" until set
   yearStart: YearStart;
   yearStartDate: string; // "MM-DD", used when yearStart is 'custom'
@@ -119,6 +123,7 @@ export const DEFAULT_SETTINGS: Settings = {
   immichUrl: '',
   immichApiKey: '',
   immichPageSize: 500,
+  language: 'auto',
   cellShape: 'circle',
   noteShape: 'circle',
 };
@@ -179,6 +184,7 @@ export function normalizeSettings(s: Partial<Settings> | null | undefined): Sett
     immichUrl: str('immichUrl').trim().replace(/\/+$/, ''),
     immichApiKey: str('immichApiKey'),
     immichPageSize: pageSize >= 1 ? Math.min(pageSize, MAX_IMMICH_PAGE) : d.immichPageSize,
+    language: src.language === 'en' || src.language === 'uk' || src.language === 'pl' ? src.language : 'auto',
     cellShape: src.cellShape === 'square' || src.cellShape === 'dots' ? src.cellShape : 'circle',
     noteShape: src.noteShape === 'circle' || src.noteShape === 'square'
       ? src.noteShape
