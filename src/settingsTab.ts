@@ -13,6 +13,7 @@ interface WlcHost {
   /** Edited in place — the object itself is never replaced. */
   readonly settings: Settings;
   saveSettings(): Promise<void>;
+  readonly currentAge: number | null;
 }
 
 type TextKey = 'birthDate' | 'yearStartDate' | 'weekFolder' | 'dayFolder' | 'weekTemplatePath' | 'dayTemplatePath' | 'immichUrl' | 'immichApiKey';
@@ -92,16 +93,29 @@ export class WeekLifeCirclesSettingTab extends PluginSettingTab {
         });
       });
     };
+    // One choice: follow the current year, or pin the first year anywhere from 0 up to now.
+    const nowAge = this.host.currentAge;
+    const pinned = Math.max(0, Math.floor(s.startAge));
+    const lastPick = Math.max(nowAge ?? 0, s.startAtCurrentYear ? 0 : pinned);
     new Setting(containerEl)
-      .setName('Start from the current year')
-      .setDesc('The grid begins with the year you are in now, so it shows what is ahead. '
-        + 'Turn off to pick the first year yourself, for example 0 to see your whole life.')
-      .addToggle(t => t.setValue(s.startAtCurrentYear).onChange(v => {
-        s.startAtCurrentYear = v;
-        void save();
-        this.display(); // show or hide the start age
-      }));
-    if (!s.startAtCurrentYear) addAge('Start age', 'startAge', 'First personal year shown in the week grid (0 = from birth).');
+      .setName('Start from year')
+      .setDesc('The first year shown in the week grid: the year you are in now (moves forward on its own), '
+        + 'or any earlier year back to 0, your first year. Notes from years before it stay in your vault.')
+      .addDropdown(d => {
+        d.addOption('current', nowAge === null ? 'Current year' : `Current year (${nowAge})`);
+        for (let y = lastPick; y >= 0; y--) d.addOption(String(y), y === 0 ? '0 (from birth)' : String(y));
+        d.setValue(s.startAtCurrentYear ? 'current' : String(pinned));
+        d.onChange(v => {
+          if (v === 'current') {
+            s.startAtCurrentYear = true;
+          } else {
+            s.startAtCurrentYear = false;
+            s.startAge = Number(v);
+            Object.assign(s, normalizeSettings(s)); // endAge stays above the start
+          }
+          void save();
+        });
+      });
     addAge('End age', 'endAge', 'Last personal year shown in the week grid.');
 
     // --- Circles (previewed in the grid's current view; the view is switched from the grid's toolbar) ---

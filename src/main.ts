@@ -51,6 +51,8 @@ const READ_CHUNK = 64;
 export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, ModalHost {
   // Replaced once in onload, then only edited in place: immich + the setting tab hold this reference.
   settings: Settings = normalizeSettings(DEFAULT_SETTINGS);
+  /** The personal year you are in now (null until a valid birth date is set). */
+  currentAge: number | null = null;
   ageRange = { startAge: DEFAULT_SETTINGS.startAge, endAge: DEFAULT_SETTINGS.endAge };
   calendar: Calendar | null = null;
   weekCells: CellMap = {};
@@ -302,12 +304,14 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
     const a = resolveAnchor(this.settings);
     if (!b || !a) {
       this.calendar = null;
+      this.currentAge = null;
       this.ageRange = ageRange(this.settings, null);
       return;
     }
     const anchor = { anchorMonth: a.month, anchorDay: a.day };
     // The year you are in now, counted from birth (a probe calendar that starts at 0).
     const currentAge = new Calendar({ ...b, ...anchor, startAge: 0, endAge: this.settings.endAge }).personalYearWeek().yy;
+    this.currentAge = currentAge;
     this.ageRange = ageRange(this.settings, currentAge);
     this.calendar = new Calendar({ ...b, ...anchor, ...this.ageRange });
   }
