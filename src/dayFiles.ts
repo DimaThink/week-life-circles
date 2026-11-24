@@ -1,4 +1,4 @@
-// Day-file parsing helpers (ported from week-calendar-sync main.js:145-164).
+// Day-file parsing helpers.
 import { contentStart, firstSquares, type Reader } from "./weekFiles";
 
 export function parseDayFilename(name: string): { y: number; m: number; d: number } | null {
@@ -12,6 +12,6 @@ export async function readDayData<F extends { name: string }>(
   file: F,
   squareKeys: string[],
 ): Promise<{ square: string | null }> {
-  const lines = (await read(file)).split("\n");
+  const lines = (await read(file)).split(/\r?\n/);
   return { square: firstSquares(lines, contentStart(lines), squareKeys)[0] ?? null };
 }

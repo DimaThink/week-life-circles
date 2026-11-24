@@ -1,4 +1,4 @@
-// Week-file parsing helpers (ported from week-calendar-sync main.js:88-143).
+// Week-file parsing helpers.
 
 import { pad2 } from "./calendar";
 import { squareClass } from "./squares";
@@ -53,7 +53,7 @@ export async function readWeekData<F extends { name: string }>(
   squareKeys: string[],
 ): Promise<{ squares: string[]; startWW: number | null; endWW: number | null }> {
   const content = await read(file);
-  const lines = content.split("\n");
+  const lines = content.split(/\r?\n/);
   const start = contentStart(lines);
   const squares = firstSquares(lines, start, squareKeys);
 

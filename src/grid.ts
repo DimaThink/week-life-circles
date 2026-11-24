@@ -140,6 +140,22 @@ export function flashCell(cell: HTMLElement): void {
   window.setTimeout(() => cell.classList.remove('wcg-flash'), 1200);
 }
 
+/** Enter/Space on a focused cell does what a click does. */
+function onActivateKey(el: HTMLElement): (e: KeyboardEvent) => void {
+  return (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    el.click();
+  };
+}
+
+/** Make a clickable cell reachable and operable from the keyboard. */
+function makeKeyboardActivatable(el: HTMLElement): void {
+  el.setAttribute('tabindex', '0');
+  el.setAttribute('role', 'button');
+  el.addEventListener('keydown', onActivateKey(el));
+}
+
 const isDecadeStart = (yy: number): boolean => yy % 10 === 0;
 
 /** Cell size each view's outer element was last paged at (absent = full size). */
@@ -350,7 +366,8 @@ function linkFiller(host: GridHost): (cell: HTMLElement, d: Cell) => void {
   };
   const hoverParent: HoverParent = { hoverPopover: null };
   return (cell, d) => {
-    const a = cell.createEl('a', { cls: 'wcg-link' });
+    const a = cell.createEl('a', { cls: 'wcg-link', attr: { tabindex: '0', role: 'button' } });
+    a.addEventListener('keydown', onActivateKey(a));
     // Obsidian's own note popover (the one links show on hover) — rendered, with images and headings.
     a.addEventListener('mouseover', (event) => {
       host.app.workspace.trigger('hover-link', {
@@ -412,6 +429,7 @@ export async function renderWeekGrid(el: HTMLElement, host: GridHost): Promise<v
     } else {
       cell.setAttribute('title', `Create ${pad2(ww)}.${pad2(yy)}`);
       cell.addEventListener('click', () => host.openCreateWeek(yy, ww));
+      makeKeyboardActivatable(cell);
     }
     return cell;
   };
@@ -469,7 +487,9 @@ export async function renderDayGrid(el: HTMLElement, host: GridHost): Promise<vo
   // Day view shows 10 years starting at the current personal year.
   const DAY_VIEW_YEARS = 10;
   const startYY = curYY ?? host.ageRange.startAge;
-  const years = Array.from({ length: DAY_VIEW_YEARS }, (_, i) => i + startYY);
+  // never past the last configured year: later days could not be stored under a valid personal year
+  const lastYY = Math.max(startYY, host.ageRange.endAge);
+  const years = Array.from({ length: DAY_VIEW_YEARS }, (_, i) => i + startYY).filter(yy => yy <= lastYY);
   const yearLen = new Map(years.map(yy => [yy, cal.personalYearDays(yy)]));
 
   const isPast = (yy: number, doy: number): boolean => {
@@ -511,6 +531,7 @@ export async function renderDayGrid(el: HTMLElement, host: GridHost): Promise<vo
         } else {
           cell.setAttribute('title', `Create ${formatYMD(cal.personalToDate(yy, doy))}`);
           cell.addEventListener('click', () => host.openCreateDay(yy, doy));
+          makeKeyboardActivatable(cell);
         }
       }
       if (isDecadeStart(yy)) cell.addClass('wcg-decade-start');

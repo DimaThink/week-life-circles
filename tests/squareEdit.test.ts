@@ -13,7 +13,7 @@ describe('slugify', () => {
     expect(slugify('  --Trip 2026--  ')).toBe('trip-2026');
   });
   it('falls back to "square" when nothing usable is left (e.g. Cyrillic)', () => {
-    expect(slugify('Подорож')).toBe('square');
+    expect(slugify('旅行')).toBe('square');
     expect(slugify('')).toBe('square');
   });
 });
@@ -45,7 +45,7 @@ describe('uniqueImageName', () => {
 describe('colorSquareKey', () => {
   it('plain, unique-by-time key that is safe in a CSS class', () => {
     expect(colorSquareKey('Deep Work', 0)).toBe('custom-deep-work-0');
-    expect(colorSquareKey('Подорож', 35)).toBe('custom-square-z');
+    expect(colorSquareKey('旅行', 35)).toBe('custom-square-z');
   });
 });
 

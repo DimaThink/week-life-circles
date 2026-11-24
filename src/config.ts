@@ -153,6 +153,8 @@ export function normalizeSettings(s: Partial<Settings> | null | undefined): Sett
   const d = DEFAULT_SETTINGS;
   const src = (s ?? {}) as Record<string, unknown>;
   const str = (k: keyof Settings): string => (typeof src[k] === 'string' ? (src[k]) : (d[k] as string));
+  /** A vault folder path: no leading or trailing slashes (they would never match a note path). */
+  const folder = (k: keyof Settings): string => str(k).trim().replace(/^\/+|\/+$/g, '');
   const num = (k: keyof Settings): number =>
     typeof src[k] === 'number' && Number.isFinite(src[k]) ? Math.floor(src[k]) : (d[k] as number);
   const startAge = Math.min(Math.max(num('startAge'), 0), MAX_AGE - 1);
@@ -166,8 +168,8 @@ export function normalizeSettings(s: Partial<Settings> | null | undefined): Sett
       : !('startAge' in src), // settings saved before this option keep their start age
     startAge,
     endAge: Math.min(Math.max(num('endAge'), startAge + 1), MAX_AGE),
-    weekFolder: str('weekFolder'),
-    dayFolder: str('dayFolder'),
+    weekFolder: folder('weekFolder'),
+    dayFolder: folder('dayFolder'),
     weekTemplatePath: str('weekTemplatePath'),
     dayTemplatePath: str('dayTemplatePath'),
     weekTemplate: str('weekTemplate'),

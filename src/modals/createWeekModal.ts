@@ -226,7 +226,20 @@ export class CreateWeekModal extends Modal {
 
   // ── Create ──
 
+  private creating = false;
+
+  /** Ignore a second tap while the first create is still running. */
   private async create(): Promise<void> {
+    if (this.creating) return;
+    this.creating = true;
+    try {
+      await this.doCreate();
+    } finally {
+      this.creating = false;
+    }
+  }
+
+  private async doCreate(): Promise<void> {
     // an empty field must not pass as "00"
     if (!/^\d{1,2}$/.test(this.ww) || !/^\d{1,3}$/.test(this.yy)) {
       new Notice('Please enter a week from 01 to 52 and a personal year');

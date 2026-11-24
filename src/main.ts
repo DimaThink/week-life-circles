@@ -27,6 +27,10 @@ class Debouncer {
     }, ms));
   }
 
+  has(name: string): boolean {
+    return this.timers.has(name);
+  }
+
   cancelAll(): void {
     for (const t of this.timers.values()) window.clearTimeout(t);
     this.timers.clear();
@@ -183,6 +187,7 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
     activeDocument.body.removeClass('wcg-notes-circle');
     this.fab?.remove();
     this.fab = null;
+    if (this.debounce.has('save')) void this.persist(); // do not lose a pending cache write
     this.debounce.cancelAll();
   }
 
@@ -200,7 +205,10 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
           continue;
         }
         r.addedNodes.forEach(n => {
-          if (n.nodeType === Node.ELEMENT_NODE) decorateSquares(n as HTMLElement, this.settings.squares, this.squareImageUrl);
+          if (n.nodeType !== Node.ELEMENT_NODE) return;
+          // the grid draws its own cells (thousands of nodes) and holds no note markers
+          if ((n as HTMLElement).closest('.wcg-view-root')) return;
+          decorateSquares(n as HTMLElement, this.settings.squares, this.squareImageUrl);
         });
       }
     });

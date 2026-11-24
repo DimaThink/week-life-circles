@@ -85,7 +85,6 @@ async function createSquareImage(app: App, name: string, bytes: ArrayBuffer): Pr
   return app.vault.createBinary(path, bytes);
 }
 
-/** Vault images that can serve as a square (png/jpg). */
 /** Is a bare image name free? Asks the link resolver instead of listing the whole vault. */
 function imageNamesTaken(app: App, squareKeys: string[]): { has(name: string): boolean } {
   const reserved = takenImageNames(squareKeys, []);
@@ -299,7 +298,7 @@ export class SquareEditor {
       .onClick(() => { void this.move(i, i + 1); }));
     row.addExtraButton(b => b.setIcon('trash').setTooltip('Delete').onClick(() => {
       new ConfirmModal(app,
-        `Delete the square "${q.name}"? Notes that use it keep their text, but it will no longer show a colour or image in the grid.`,
+        `Delete the circle "${q.name}"? Notes that use it keep their text, but it will no longer show a colour or image in the grid.`,
         'Delete', () => {
           const at = settings.squares.indexOf(q);
           if (at !== -1) settings.squares.splice(at, 1);

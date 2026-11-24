@@ -104,7 +104,7 @@ export class WeekLifeCirclesSettingTab extends PluginSettingTab {
     if (!s.startAtCurrentYear) addAge('Start age', 'startAge', 'First personal year shown in the week grid (0 = from birth).');
     addAge('End age', 'endAge', 'Last personal year shown in the week grid.');
 
-    // --- Squares (previewed in the grid's current view; the view is switched from the grid's toolbar) ---
+    // --- Circles (previewed in the grid's current view; the view is switched from the grid's toolbar) ---
     new Setting(containerEl).setName('Circles').setHeading()
       .setDesc('What kind of week or day it was. Rename, recolour, replace images and reorder here — the first circle is preselected for new notes.');
     new Setting(containerEl)

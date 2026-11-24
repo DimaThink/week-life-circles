@@ -1,4 +1,4 @@
-// Personal-year calendar math, ported from week-calendar-sync/main.js:168-232.
+// Personal-year calendar math.
 // Uses local Date like the original (runtime follows the device TZ).
 
 export interface CalendarConfig {

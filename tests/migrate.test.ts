@@ -41,7 +41,7 @@ describe('migrate', () => {
     expect(new Set(keys).size).toBe(keys.length);
     expect(s.squares.length).toBe(DEFAULT_SETTINGS.squares.length + 1);
     expect(s.weekTemplate).toBe(DEFAULT_SETTINGS.weekTemplate);
-    expect(s.weekTemplate).not.toContain('Що було');
+    expect(s.weekTemplate).not.toContain('Été à Paris');
     expect(s.dayTemplate).toBe(DEFAULT_SETTINGS.dayTemplate);
     expect(s.immichEnabled).toBe(false);
     expect(data.cells['21']['1'].square).toBe('work.png');

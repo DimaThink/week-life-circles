@@ -64,7 +64,20 @@ export class CreateDayModal extends Modal {
     });
   }
 
+  private creating = false;
+
+  /** Ignore a second tap while the first create is still running. */
   private async create(): Promise<void> {
+    if (this.creating) return;
+    this.creating = true;
+    try {
+      await this.doCreate();
+    } finally {
+      this.creating = false;
+    }
+  }
+
+  private async doCreate(): Promise<void> {
     if (!this.date) return;
     try {
       const { vault, workspace } = this.host.app;

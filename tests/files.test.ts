@@ -97,3 +97,11 @@ describe("readDayData", () => {
     expect(await readDayData(reader("hello"), { name: "2026-04-30.md" }, keys)).toEqual({ square: null });
   });
 });
+
+describe("CRLF notes", () => {
+  it("skip frontmatter and find the circle in a Windows-line-ending week note", async () => {
+    const text = '---\r\ntags: x\r\n---\r\n07.28 ![[work.png|14]] 18.11.2026\r\n';
+    const d = await readWeekData(reader(text), { name: "07.28.md" }, keys);
+    expect(d.squares).toEqual(["work.png"]);
+  });
+});

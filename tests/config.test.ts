@@ -78,7 +78,7 @@ describe('config code (encode/parse)', () => {
     ...DEFAULT_SETTINGS,
     birthDate: '2000-01-01',
     immichApiKey: 'secret-key',
-    weekTemplate: '# Що було\n', // non-ASCII survives
+    weekTemplate: '# Été à Paris\n', // non-ASCII survives
     squares: [{ key: 'flag.png', name: 'Trip', color: null }],
   });
 
@@ -130,5 +130,13 @@ describe('default circles', () => {
   it('carry no personal names', () => {
     const names = DEFAULT_SQUARES.map(q => q.name.toLowerCase()).join(' ');
     for (const w of ['intimate', 'lost', 'sick', 'void', 'nostalgia']) expect(names).not.toContain(w);
+  });
+});
+
+describe('folder settings', () => {
+  it('strip leading and trailing slashes so note paths match', () => {
+    const s = normalizeSettings({ weekFolder: '/Weeks/', dayFolder: 'Days//' });
+    expect(s.weekFolder).toBe('Weeks');
+    expect(s.dayFolder).toBe('Days');
   });
 });
