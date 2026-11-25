@@ -139,4 +139,9 @@ describe('folder settings', () => {
     expect(s.weekFolder).toBe('Weeks');
     expect(s.dayFolder).toBe('Days');
   });
+  it('an empty or slash-only folder falls back to the default', () => {
+    const s = normalizeSettings({ weekFolder: '/', dayFolder: '   ' });
+    expect(s.weekFolder).toBe(DEFAULT_SETTINGS.weekFolder);
+    expect(s.dayFolder).toBe(DEFAULT_SETTINGS.dayFolder);
+  });
 });

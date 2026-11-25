@@ -141,20 +141,24 @@ export function flashCell(cell: HTMLElement): void {
   window.setTimeout(() => cell.classList.remove('wcg-flash'), 1200);
 }
 
-/** Enter/Space on a focused cell does what a click does. */
-function onActivateKey(el: HTMLElement): (e: KeyboardEvent) => void {
-  return (e) => {
-    if (e.key !== 'Enter' && e.key !== ' ') return;
-    e.preventDefault();
-    el.click();
-  };
-}
+/** Cells that open something: filled cells' links and empty cells that create a note. */
+const ACTIVATABLE = '.wcg-link, .wcg-cell[role="button"]';
 
-/** Make a clickable cell reachable and operable from the keyboard. */
-function makeKeyboardActivatable(el: HTMLElement): void {
+/** Make an empty cell reachable from the keyboard (Enter/Space is handled once per grid, below). */
+function markCreatable(el: HTMLElement): void {
   el.setAttribute('tabindex', '0');
   el.setAttribute('role', 'button');
-  el.addEventListener('keydown', onActivateKey(el));
+}
+
+/** One listener per grid instead of one per cell: Enter/Space on a focused cell acts like a click. */
+function activateOnKeys(root: HTMLElement): void {
+  root.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const el = e.target as Node | null;
+    if (!el?.instanceOf(HTMLElement) || !el.matches(ACTIVATABLE)) return;
+    e.preventDefault();
+    el.click();
+  });
 }
 
 const isDecadeStart = (yy: number): boolean => yy % 10 === 0;
@@ -270,6 +274,7 @@ function renderShell(el: HTMLElement, title: string, rootCls: string, shape: Cel
   const headerViewport = outer.createDiv({ cls: 'wcg-header-viewport' });
   const headerTrack = headerViewport.createDiv({ cls: 'wcg-header-track' });
   const root = outer.createDiv({ cls: rootCls });
+  activateOnKeys(root);
   let scrollFrame = 0;
   root.addEventListener('scroll', () => {
     if (scrollFrame) return; // one header update per frame, however many scroll events fire
@@ -367,8 +372,7 @@ function linkFiller(host: GridHost): (cell: HTMLElement, d: Cell) => void {
   };
   const hoverParent: HoverParent = { hoverPopover: null };
   return (cell, d) => {
-    const a = cell.createEl('a', { cls: 'wcg-link', attr: { tabindex: '0', role: 'button' } });
-    a.addEventListener('keydown', onActivateKey(a));
+    const a = cell.createEl('a', { cls: 'wcg-link', attr: { tabindex: '0', role: 'link' } });
     // Obsidian's own note popover (the one links show on hover) — rendered, with images and headings.
     a.addEventListener('mouseover', (event) => {
       host.app.workspace.trigger('hover-link', {
@@ -430,7 +434,7 @@ export async function renderWeekGrid(el: HTMLElement, host: GridHost): Promise<v
     } else {
       cell.setAttribute('title', t('notes.grid.createTitle', { name: `${pad2(ww)}.${pad2(yy)}` }));
       cell.addEventListener('click', () => host.openCreateWeek(yy, ww));
-      makeKeyboardActivatable(cell);
+      markCreatable(cell);
     }
     return cell;
   };
@@ -457,7 +461,7 @@ export async function renderWeekGrid(el: HTMLElement, host: GridHost): Promise<v
     for (const yy of years) {
       let rowCls = 'wcg-row';
       if (yy === curYY) rowCls += ' wcg-cur-week';
-      if (isDecadeStart(yy)) rowCls += ' wcg-decade-top';
+      if (isDecadeStart(yy) && yy !== years[0]) rowCls += ' wcg-decade-top'; // no line under the header
       const row = wrap.createDiv({ cls: rowCls });
       row.createDiv({ cls: 'wcg-ww-label' + (yy === curYY ? ' wcg-cur-year-lbl' : ''), text: String(yy) });
       for (const ww of weeks) makeCell(row, yy, ww, ww - 1);
@@ -532,7 +536,7 @@ export async function renderDayGrid(el: HTMLElement, host: GridHost): Promise<vo
         } else {
           cell.setAttribute('title', t('notes.grid.createTitle', { name: formatYMD(cal.personalToDate(yy, doy)) }));
           cell.addEventListener('click', () => host.openCreateDay(yy, doy));
-          makeKeyboardActivatable(cell);
+          markCreatable(cell);
         }
       }
       if (isDecadeStart(yy)) cell.addClass('wcg-decade-start');

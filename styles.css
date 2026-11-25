@@ -219,11 +219,15 @@
                 0 6px 14px -5px rgba(0, 0, 0, 0.5);
 }
 }
-.wcg-cell:focus-visible {
+/* scoped one level up so it outranks the faint ring of .wcg-cell.wcg-future, declared below */
+.wcg-view-root .wcg-cell:focus-visible {
     z-index: 5;
     outline: none;
     box-shadow: inset 0 0 0 2px var(--interactive-accent);
 }
+/* a filled cell is focused through its link: ring it from the overlay, which sits above images */
+.wcg-link:focus-visible { outline: none; }
+.wcg-link:focus-visible::after { box-shadow: inset 0 0 0 2px var(--interactive-accent); }
 .wcg-cell.wcg-cur-cell {
     box-shadow: inset 0 0 0 2px var(--interactive-accent);
     animation: wcg-today 2.6s ease-out 4;

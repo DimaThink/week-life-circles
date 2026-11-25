@@ -158,8 +158,8 @@ export function normalizeSettings(s: Partial<Settings> | null | undefined): Sett
   const d = DEFAULT_SETTINGS;
   const src = (s ?? {}) as Record<string, unknown>;
   const str = (k: keyof Settings): string => (typeof src[k] === 'string' ? (src[k]) : (d[k] as string));
-  /** A vault folder path: no leading or trailing slashes (they would never match a note path). */
-  const folder = (k: keyof Settings): string => str(k).trim().replace(/^\/+|\/+$/g, '');
+  /** A vault folder path: no leading or trailing slashes (they would never match a note path); empty = the default. */
+  const folder = (k: keyof Settings): string => str(k).trim().replace(/^\/+|\/+$/g, '') || (d[k] as string);
   const num = (k: keyof Settings): number =>
     typeof src[k] === 'number' && Number.isFinite(src[k]) ? Math.floor(src[k]) : (d[k] as number);
   const startAge = Math.min(Math.max(num('startAge'), 0), MAX_AGE - 1);

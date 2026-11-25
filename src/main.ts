@@ -1,5 +1,5 @@
 import { Notice, Platform, Plugin, TAbstractFile, TFile, TFolder } from 'obsidian';
-import { resolveLang, setLang, t } from './i18n';
+import { applyLanguage, t } from './i18n';
 import { obsidianLocale } from './momentFmt';
 import type { WorkspaceLeaf } from 'obsidian';
 import { CellMap, CellShape, Settings, DEFAULT_SETTINGS, normalizeSettings, parseBirthDate, resolveAnchor, ageRange } from './config';
@@ -79,7 +79,7 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
     const normalized = normalizeSettings(data.settings);
     const changed = JSON.stringify(normalized) !== JSON.stringify(data.settings);
     this.settings = normalized;
-    setLang(resolveLang(normalized.language, obsidianLocale()));
+    this.syncLanguage();
     this.weekCells = data.cells ?? {};
     this.weekBuiltAt = data.builtAt ?? 0;
     this.dayCells = data.dayCells ?? {};
@@ -255,7 +255,7 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
   async onExternalSettingsChange(): Promise<void> {
     const { data } = migrate(await this.loadData());
     Object.assign(this.settings, normalizeSettings(data.settings));
-    setLang(resolveLang(this.settings.language, obsidianLocale()));
+    this.syncLanguage();
     this.weekCells = data.cells ?? {};
     this.weekBuiltAt = data.builtAt ?? 0;
     this.dayCells = data.dayCells ?? {};
@@ -267,6 +267,7 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
 
   /** Called by the setting tab after it edited `settings` in place. */
   async saveSettings(): Promise<void> {
+    this.syncLanguage(); // the language picker and an imported config both land here
     this.rebuildCalendar();
     this.refreshSquares();
     await this.persist();
@@ -301,6 +302,10 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
       week: JSON.stringify([s.weekFolder, keys]),
       day: JSON.stringify([s.dayFolder, keys, s.birthDate, s.startAtCurrentYear, s.startAge, s.endAge, s.yearStart, s.yearStartDate]),
     };
+  }
+
+  private syncLanguage(): void {
+    applyLanguage(this.settings.language, obsidianLocale());
   }
 
   private rebuildCalendar(): void {

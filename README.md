@@ -56,6 +56,8 @@ Prefer a calendar-style grid? **Year starts** lets each year begin on your birth
 - **Follows your theme** — light or dark; every filled circle has a subtle
   contrasting ring, so white circles stay visible on a light background and
   black ones on a dark background.
+- **English, Ukrainian, Polish** — the interface follows Obsidian's language, or the one you
+  pick in the settings.
 - **Optional Immich photo picker** — see below. Off by default.
 
 ## Getting started
@@ -81,14 +83,14 @@ an embed: `![[england.png|14]]`.
 
 | Setting | What it does |
 | --- | --- |
-| Language | Auto (follows Obsidian), English, Ukrainian or Polish: the settings, dialogs, buttons and notices. Command names update after reloading the plugin. |
+| Language | Auto (follows Obsidian), English, Ukrainian or Polish: the settings, dialogs, buttons and notices. A language you pick also sets the month and weekday names; on Auto they follow Obsidian. Command names update after reloading the plugin. |
 | Birth date | Needed before anything is shown; the default start of every grid year. |
 | Year starts | On your birthday (default), on 1 January, or on a custom day (`MM-DD`). Existing notes keep their week/year numbers, so after a change they map to different dates. |
 | Start from year | The first year of the week grid: the current year (default, moves forward on its own) or any year from 0 (your whole life) up to now. Notes from earlier years stay in your vault. |
 | End age | Last personal year shown in the week grid. |
 | Week folder / Day folder | Where week and day notes are stored. |
 | Week template path / Day template path | Optional path to a note used as the week or day template instead of the built-in one. The same placeholders work in it. |
-| Week template / Day template | Text of new notes. Placeholders: `{{ww}}`, `{{yy}}`, `{{circle}}` (`{{square}}` still works), `{{date}}`, `{{photos}}` (week), `{{weekday}}` (day). The weekday is written in Obsidian's language. |
+| Week template / Day template | Text of new notes. Placeholders: `{{ww}}`, `{{yy}}`, `{{circle}}` (`{{square}}` still works), `{{date}}`, `{{photos}}` (week), `{{weekday}}` (day). The weekday is written in Obsidian's language, or in the plugin's language if you picked one. |
 | Marker shape in notes | Circle (default for new installs) or rounded square: how the marker at the top of a week/day note is drawn. Colour and image markers always share one size and shape. |
 | Circles | **Restore defaults** brings back the seven default circles in one click. The list of circles, previewed in your cell shape. Each is a name plus a color, or an image. Rename, recolor, reorder (the first one is preselected for new notes) or delete them; **Replace image** uploads a new picture under the same file name, so existing notes keep working. A colour circle can become an image circle (upload or pick a picture) and back again; notes that already use it follow along and show its new look. **Add a circle**: pick a color, or upload an image (shrunk to a small PNG and saved to your attachments folder) or choose a PNG/JPG already in your vault. |
 | Immich | Optional photo picker, see below. |

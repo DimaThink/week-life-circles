@@ -1,9 +1,7 @@
 import { App, Notice, Plugin, PluginSettingTab, Setting, normalizePath, requestUrl } from 'obsidian';
 import { DEFAULT_SETTINGS, Language, Settings, normalizeSettings, encodeConfig, parseConfigPayload } from './config';
-import { obsidianLocale } from './momentFmt';
 import { SquareEditor } from './squareEditor';
-import { LANGUAGE_NAMES, resolveLang, setLang, t } from './i18n';
-
+import { LANGUAGE_NAMES, t } from './i18n';
 
 /**
  * What the settings tab needs from the plugin. A plain interface, NOT a
@@ -69,14 +67,15 @@ export class WeekLifeCirclesSettingTab extends PluginSettingTab {
         .setValue(s.language)
         .onChange(async v => {
           s.language = (v === 'en' || v === 'uk' || v === 'pl' ? v : 'auto') satisfies Language;
-          await save();
-          setLang(resolveLang(s.language, obsidianLocale()));
+          await save(); // applies the language
           this.display();
         }));
 
     // --- Calendar ---
     new Setting(containerEl).setName(t('settings.calendar')).setHeading();
-    addText(t('settings.birthDate'), 'birthDate', trim, t('settings.birthDateDesc'), 'YYYY-MM-DD');
+    addText(t('settings.birthDate'), 'birthDate', trim, t('settings.birthDateDesc'), 'YYYY-MM-DD')
+      // once the date is complete (blur / Enter), redraw so "Start from year" lists the right years
+      .controlEl.querySelector('input')?.addEventListener('change', () => this.display());
     new Setting(containerEl)
       .setName(t('settings.yearStarts'))
       .setDesc(t('settings.yearStartsDesc'))
@@ -123,6 +122,7 @@ export class WeekLifeCirclesSettingTab extends PluginSettingTab {
         for (let y = lastPick; y >= 0; y--) d.addOption(String(y), y === 0 ? t('settings.yearZero') : String(y));
         d.setValue(s.startAtCurrentYear ? 'current' : String(pinned));
         d.onChange(v => {
+          const endAge = s.endAge;
           if (v === 'current') {
             s.startAtCurrentYear = true;
           } else {
@@ -131,6 +131,7 @@ export class WeekLifeCirclesSettingTab extends PluginSettingTab {
             Object.assign(s, normalizeSettings(s)); // endAge stays above the start
           }
           void save();
+          if (s.endAge !== endAge) this.display(); // show the raised end age
         });
       });
     addAge(t('settings.endAge'), 'endAge', t('settings.endAgeDesc'));

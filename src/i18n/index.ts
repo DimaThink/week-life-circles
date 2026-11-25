@@ -17,6 +17,8 @@ const merged: Record<Lang, Dict> = { en: {}, uk: {}, pl: {} };
 for (const p of PACKS) for (const l of ['en', 'uk', 'pl'] as const) Object.assign(merged[l], p[l]);
 
 let current: Lang = 'en';
+/** The language the user picked explicitly; null = follow Obsidian. */
+let forced: Lang | null = null;
 
 /** Pick the language: an explicit choice, or Obsidian's own locale ("uk", "pl", "en-GB", …). */
 export function resolveLang(pref: Language, obsidianLocale: string): Lang {
@@ -29,12 +31,20 @@ export function setLang(l: Lang): void {
   current = l;
 }
 
-export function getLang(): Lang {
-  return current;
+/** Apply the language setting: UI strings, plus date names when a language is forced. */
+export function applyLanguage(pref: Language, obsidianLocale: string): void {
+  current = resolveLang(pref, obsidianLocale);
+  forced = pref === 'auto' ? null : current;
+}
+
+/** Locale for month and weekday names: the forced language, or null to keep Obsidian's. */
+export function forcedLocale(): Lang | null {
+  return forced;
 }
 
 /** Translate `key`, filling `{name}` placeholders. Missing keys fall back to English, then to the key. */
 export function t(key: string, vars?: Record<string, string | number>): string {
   const raw = merged[current][key] ?? merged.en[key] ?? key;
-  return vars ? raw.replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? String(vars[k]) : m)) : raw;
+  if (!vars) return raw;
+  return raw.replace(/\{(\w+)\}/g, (m, k: string) => (Object.prototype.hasOwnProperty.call(vars, k) ? String(vars[k]) : m));
 }
