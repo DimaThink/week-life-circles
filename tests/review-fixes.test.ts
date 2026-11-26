@@ -5,6 +5,9 @@ import { migrate } from '../src/migrate';
 import { buildWeekNote, renderDayTemplate } from '../src/templates';
 import { parseWeekFilename, readWeekData } from '../src/weekFiles';
 
+/** Inline markers only (the pre-1.10 output these template tests describe). */
+const INLINE = { ...DEFAULT_SETTINGS, markerStyle: 'inline' as const };
+
 describe('calendar across DST switches', () => {
   afterAll(() => { process.env.TZ = 'UTC'; });
 
@@ -25,30 +28,35 @@ describe('calendar across DST switches', () => {
     });
 });
 
+const dd = new Date(2026, 10, 18);
+const dates = { weekStart: dd, weekEnd: new Date(2026, 10, 24), today: dd };
+const ymd = (d: Date, f: string): string => (f === 'dddd' ? 'Wednesday' : f === 'ddd' ? 'Wed'
+  : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+
 describe('week note without photos', () => {
   it('leaves no extra blank line where the {{photos}} line was (matches the old plugin)', () => {
     const settings = migrate({ cells: {} }).data.settings;
     const note = (photoNames: string[]): string =>
-      buildWeekNote({ ww: '07', yy: '28', square: 'work.png', dateStr: '18.11.2026', photoNames, settings });
+      buildWeekNote({ ww: '07', yy: '28', square: 'work.png', dates, formatDate: ymd, photoNames, settings });
     expect(note([])).toContain('# Photos\n\n\n# Days');
     expect(note(['07.28.jpg', '07_2.28.mp4'])).toContain('# Photos\n\n![[07.28.jpg|600]]\n![[07_2.28.mp4]]\n\n# Days');
   });
   it('still fills an inline {{photos}} token', () => {
-    const settings = { ...DEFAULT_SETTINGS, weekTemplate: 'p: {{photos}}!' };
-    expect(buildWeekNote({ ww: '01', yy: '28', square: 'work.png', dateStr: 'd', photoNames: [], settings })).toBe('p: !');
+    const settings = { ...INLINE, weekTemplate: 'p: {{photos}}!' };
+    expect(buildWeekNote({ ww: '01', yy: '28', square: 'work.png', dates, formatDate: ymd, photoNames: [], settings })).toBe('p: !');
   });
 });
 
 describe('day template file', () => {
-  const base = { dateStr: '2026-11-18', weekdayName: 'Wednesday', yesterdayStr: '2026-11-17', square: 'rest.png', settings: DEFAULT_SETTINGS };
+  const base = { day: dd, today: dd, formatDate: ymd, square: 'rest.png', settings: INLINE };
   it('fills the documented {{placeholders}}', () => {
     expect(renderDayTemplate({ ...base, templateRaw: '# {{date}} {{weekday}} {{square}}' }))
       .toBe('# 2026-11-18 Wednesday <span class="sq sq-rest"></span>');
   });
-  it('still fills the Templater tags of the original template', () => {
-    const tpl = '<%* const x = 1 -%>\n# <% date %> · <% dayUA %> <span class="sq sq-work"></span>\n[[<% tp.date.now("YYYY-MM-DD", -1) %>]]';
+  it('fills {{yesterday}}; Templater tags are no longer interpreted', () => {
+    const tpl = '<%* const x = 1 -%>\n# <% date %> {{circle}}\n[[{{yesterday}}]]';
     expect(renderDayTemplate({ ...base, templateRaw: tpl }))
-      .toBe('# 2026-11-18 · Wednesday <span class="sq sq-rest"></span>\n[[2026-11-17]]');
+      .toBe('<%* const x = 1 -%>\n# <% date %> <span class="sq sq-rest"></span>\n[[2026-11-17]]');
   });
 });
 

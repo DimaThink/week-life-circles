@@ -1,10 +1,16 @@
 import type { App } from 'obsidian';
 import type { Settings, SquareDef } from '../config';
+import { daySquareSet } from '../config';
 import { squareImage } from '../squares';
 
 /** The square preselected in the create dialogs. */
 export function defaultSquareKey(settings: Settings): string {
   return settings.squares[0]?.key ?? 'work.png';
+}
+
+/** The square preselected in the create-day dialog (from the day set when it is on). */
+export function defaultDaySquareKey(settings: Pick<Settings, 'squares' | 'daySquares' | 'daySquaresEnabled'>): string {
+  return daySquareSet(settings)[0]?.key ?? 'work.png';
 }
 
 /** Labelled grid of selectable squares (colour or image); calls `onPick` with the chosen key. */

@@ -1,6 +1,18 @@
 import { describe, it, expect } from 'vitest';
 import { DEFAULT_SETTINGS, normalizeSettings } from '../src/config';
-import { buildWeekNote, renderDayTemplate, squareMarkup } from '../src/templates';
+import { buildWeekNote, renderDayTemplate, squareMarkup, type DateFormatter } from '../src/templates';
+
+/** Inline markers only (the pre-1.10 output these template tests describe). */
+const INLINE = { ...DEFAULT_SETTINGS, markerStyle: 'inline' as const };
+
+// DD.MM.YYYY / YYYY-MM-DD / dddd only, enough for these tests
+const p2 = (n: number): string => String(n).padStart(2, '0');
+const formatDate: DateFormatter = (d, f) => f
+  .replace('dddd', ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][d.getDay()])
+  .replace('ddd', ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()])
+  .replace('YYYY', String(d.getFullYear())).replace('MM', p2(d.getMonth() + 1)).replace('DD', p2(d.getDate()));
+const d0 = new Date(2025, 3, 30);
+const dates = { weekStart: d0, weekEnd: new Date(2025, 4, 6), today: d0 };
 
 describe('squareMarkup', () => {
   it('image square', () => {
@@ -13,11 +25,11 @@ describe('squareMarkup', () => {
 
 describe('buildWeekNote', () => {
   const out = buildWeekNote({
-    ww: '04', yy: '25', square: 'work.png', dateStr: '30.04.2025',
-    photoNames: ['04.25.jpg', 'clip.mp4'], settings: DEFAULT_SETTINGS,
+    ww: '04', yy: '25', square: 'work.png', dates, formatDate,
+    photoNames: ['04.25.jpg', 'clip.mp4'], settings: INLINE,
   });
   it('first line', () => {
-    expect(out.split('\n')[0]).toBe('04.25 <span class="sq sq-work"></span> 30.04.2025');
+    expect(out.split('\n')[0]).toBe('04.25 <span class="sq sq-work"></span> 30.04.2025 – 06.05.2025');
   });
   it('headers, photos, no leftover tokens', () => {
     expect(out).toContain('# What happened');
@@ -26,33 +38,33 @@ describe('buildWeekNote', () => {
     expect(out).not.toMatch(/\{\{.*?\}\}/);
   });
   it('empty photos', () => {
-    const o = buildWeekNote({ ww: '04', yy: '25', square: 'work.png', dateStr: 'd', photoNames: [], settings: DEFAULT_SETTINGS });
+    const o = buildWeekNote({ ww: '04', yy: '25', square: 'work.png', dates, formatDate, photoNames: [], settings: INLINE });
     expect(o).not.toContain('{{photos}}');
   });
 });
 
 describe('renderDayTemplate', () => {
-  const base = { dateStr: '2025-04-30', weekdayName: 'Wednesday', yesterdayStr: '2025-04-29', square: 'work.png', settings: DEFAULT_SETTINGS };
+  const base = { day: d0, today: d0, formatDate, square: 'work.png', settings: INLINE };
   it('built-in', () => {
-    expect(renderDayTemplate({ ...base, templateRaw: null }))
-      .toBe('# 2025-04-30 · Wednesday <span class="sq sq-work"></span>\n');
+    expect(renderDayTemplate({ ...base, templateRaw: null }).split('\n')[0])
+      .toBe('# 30.04.2025 · Wednesday <span class="sq sq-work"></span>');
   });
-  it('templater raw', () => {
-    const raw = '<%* const x=1 -%>\n# <% date %> · <% dayUA %> <span class="sq sq-work"></span>\nyesterday: <% tp.date.now("YYYY-MM-DD", -1) %>';
+  it('template file: the same {{…}} placeholders', () => {
+    const raw = '# {{date}} · {{weekday}} {{circle}}\nyesterday: {{yesterday:YYYY-MM-DD}}';
     const out = renderDayTemplate({ ...base, templateRaw: raw, square: 'sample.png',
-      settings: { ...DEFAULT_SETTINGS, squares: [{ key: 'sample.png', name: 'K', color: null }] } });
-    expect(out).toBe('# 2025-04-30 · Wednesday ![[sample.png|14]]\nyesterday: 2025-04-29');
+      settings: { ...INLINE, squares: [{ key: 'sample.png', name: 'K', color: null }] } });
+    expect(out).toBe('# 30.04.2025 · Wednesday ![[sample.png|14]]\nyesterday: 2025-04-29');
   });
 });
 
 describe('week template path', () => {
-  const base = { ww: '07', yy: '28', square: 'work.png', dateStr: '18.11.2026', photoNames: ['07.28.jpg'] };
+  const base = { ww: '07', yy: '28', square: 'work.png', dates, formatDate, photoNames: ['07.28.jpg'] };
   it('a template note replaces the built-in week template, same placeholders', () => {
-    const out = buildWeekNote({ ...base, settings: DEFAULT_SETTINGS, templateRaw: '{{ww}}.{{yy}} {{square}}\n{{photos}}\nend' });
+    const out = buildWeekNote({ ...base, settings: INLINE, templateRaw: '{{ww}}.{{yy}} {{square}}\n{{photos}}\nend' });
     expect(out).toBe('07.28 <span class="sq sq-work"></span>\n![[07.28.jpg|600]]\nend');
   });
   it('no template note → the settings text', () => {
-    const settings = { ...DEFAULT_SETTINGS, weekTemplate: 'W {{ww}}' };
+    const settings = { ...INLINE, weekTemplate: 'W {{ww}}' };
     expect(buildWeekNote({ ...base, settings, templateRaw: null })).toBe('W 07');
     expect(buildWeekNote({ ...base, settings })).toBe('W 07');
   });
@@ -64,7 +76,7 @@ describe('week template path', () => {
 });
 
 describe('{{circle}} placeholder', () => {
-  const o = { ww: '04', yy: '25', square: 'work.png', dateStr: 'd', photoNames: [] as string[], settings: DEFAULT_SETTINGS };
+  const o = { ww: '04', yy: '25', square: 'work.png', dates, formatDate, photoNames: [] as string[], settings: INLINE };
   it('week template: {{circle}} is the same as {{square}}', () => {
     const a = buildWeekNote({ ...o, templateRaw: 'x {{circle}} y' });
     const b = buildWeekNote({ ...o, templateRaw: 'x {{square}} y' });
@@ -72,7 +84,7 @@ describe('{{circle}} placeholder', () => {
     expect(a).toContain('sq-work');
   });
   it('day template: {{circle}} is the same as {{square}}', () => {
-    const base = { dateStr: 'd', weekdayName: 'Mon', yesterdayStr: 'y', square: 'work.png', settings: DEFAULT_SETTINGS };
+    const base = { day: d0, today: d0, formatDate, square: 'work.png', settings: INLINE };
     expect(renderDayTemplate({ ...base, templateRaw: '# {{circle}}' })).toBe(renderDayTemplate({ ...base, templateRaw: '# {{square}}' }));
     expect(renderDayTemplate({ ...base, templateRaw: '# {{circle}}' })).toContain('sq-work');
   });

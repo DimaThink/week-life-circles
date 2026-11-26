@@ -1,8 +1,8 @@
 import { Notice, Platform, Plugin, TAbstractFile, TFile, TFolder } from 'obsidian';
-import { applyLanguage, t } from './i18n';
+import { applyLanguage, resolveLang, t } from './i18n';
 import { obsidianLocale } from './momentFmt';
 import type { WorkspaceLeaf } from 'obsidian';
-import { CellMap, CellShape, Settings, DEFAULT_SETTINGS, normalizeSettings, parseBirthDate, resolveAnchor, ageRange } from './config';
+import { CellMap, CellShape, Settings, DEFAULT_SETTINGS, normalizeSettings, parseBirthDate, resolveAnchor, ageRange, freshInstallSettings, daySquareSet, markerSquares } from './config';
 import { migrate, SavedData } from './migrate';
 import { Calendar, WEEKS_PER_YEAR } from './calendar';
 import { decorateSquares, squareImage } from './squares';
@@ -12,6 +12,9 @@ import { DAY_VIEW_TYPE, DayCalendarView, GridView, WEEK_VIEW_TYPE, WeekCalendarV
 import { GridHost, HOVER_SOURCE, ICON_CALENDAR, makeIcon } from './grid';
 import { CreateWeekModal } from './modals/createWeekModal';
 import { CreateDayModal, ModalHost } from './modals/createDayModal';
+import { CircleMigrationModal } from './modals/circleMigrationModal';
+import { planCircleMigration, type MigrationNote } from './circleMigration';
+import type { CircleProperty } from './circleProperty';
 import { ImmichClient } from './immich';
 import { WeekLifeCirclesSettingTab } from './settingsTab';
 
@@ -50,6 +53,15 @@ async function mapChunked<T, R>(items: T[], size: number, fn: (item: T) => Promi
 
 const READ_CHUNK = 64;
 
+/** Obsidian's settings modal; not in the public API, so only used after a runtime check. */
+interface SettingModal { open(): void; openTabById(id: string): unknown }
+
+function isSettingModal(v: unknown): v is SettingModal {
+  if (v === null || typeof v !== 'object') return false;
+  const o = v as Record<string, unknown>;
+  return typeof o.open === 'function' && typeof o.openTabById === 'function';
+}
+
 export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, ModalHost {
   // Replaced once in onload, then only edited in place: immich + the setting tab hold this reference.
   settings: Settings = normalizeSettings(DEFAULT_SETTINGS);
@@ -75,8 +87,11 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
   private unloaded = false;
 
   async onload(): Promise<void> {
-    const { data, migrated } = migrate(await this.loadData());
-    const normalized = normalizeSettings(data.settings);
+    const { data, migrated, fresh } = migrate(await this.loadData());
+    // A new install starts with the starter templates in the user's language.
+    const normalized = fresh
+      ? freshInstallSettings(resolveLang(DEFAULT_SETTINGS.language, obsidianLocale()))
+      : normalizeSettings(data.settings);
     const changed = JSON.stringify(normalized) !== JSON.stringify(data.settings);
     this.settings = normalized;
     this.syncLanguage();
@@ -85,7 +100,7 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
     this.dayCells = data.dayCells ?? {};
     this.dayBuiltAt = data.dayBuiltAt ?? 0;
     this.immich = new ImmichClient(this.settings);
-    if (migrated || changed) await this.persist();
+    if (migrated || changed || fresh) await this.persist();
 
     this.rebuildCalendar();
     this.cacheInputs = this.currentCacheInputs();
@@ -99,14 +114,7 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
     this.addRibbonIcon('calendar-days', 'Week Life Circles', () => { void this.activateWeekView(); });
     this.addRibbonIcon('calendar', t('notes.main.dayRibbon'), () => { void this.activateDayView(); });
 
-    if (Platform.isMobile) {
-      this.fab = activeDocument.body.createEl('button', {
-        cls: 'wcg-fab',
-        attr: { 'aria-label': 'Week Life Circles' },
-      });
-      makeIcon(this.fab, ICON_CALENDAR);
-      this.fab.addEventListener('click', () => { void this.activateWeekView(); });
-    }
+    this.syncMobileButton();
 
     this.addCommand({ id: 'open-week-view', name: t('notes.main.openWeek'), callback: () => { void this.activateWeekView(); } });
     this.addCommand({ id: 'open-day-view', name: t('notes.main.openDay'), callback: () => { void this.activateDayView(); } });
@@ -126,11 +134,16 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
       name: t('notes.createWeek.title'),
       callback: () => { new CreateWeekModal(this).open(); },
     });
+    this.addCommand({
+      id: 'add-circle-properties',
+      name: t('notes.migrate.command'),
+      callback: () => { void this.openCircleMigration(); },
+    });
 
     // Clicking a colour square in reading view jumps to the grid cell
     this.registerMarkdownPostProcessor((el, ctx) => {
       const target = parseWeekFilename(ctx.sourcePath.split('/').pop() ?? '');
-      decorateSquares(el, this.settings.squares, this.squareImageUrl);
+      decorateSquares(el, markerSquares(this.settings), this.squareImageUrl);
       el.querySelectorAll('span.sq').forEach(span =>
         span.addEventListener('click', e => {
           e.preventDefault(); e.stopPropagation();
@@ -145,7 +158,7 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
       const img = t?.instanceOf(HTMLImageElement) ? t : t?.matches?.('.internal-embed') ? t.querySelector('img') : null;
       if (!img) return;
       const name = (img.getAttribute('alt') || '').trim();
-      if (!this.settings.squares.some(s => !s.color && (s.key === name || squareImage(s) === name))) return;
+      if (!markerSquares(this.settings).some(s => !s.color && (s.key === name || squareImage(s) === name))) return;
       e.preventDefault();
       e.stopPropagation();
       const file = this.app.workspace.getActiveFile();
@@ -205,7 +218,7 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
           // Live Preview can set a span's class after inserting it: colour it once it becomes a square
           const t = r.target;
           if (t.nodeType === Node.ELEMENT_NODE && (t as Element).classList.contains('sq')) {
-            decorateSquares(t as HTMLElement, this.settings.squares, this.squareImageUrl);
+            decorateSquares(t as HTMLElement, markerSquares(this.settings), this.squareImageUrl);
           }
           continue;
         }
@@ -213,7 +226,7 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
           if (n.nodeType !== Node.ELEMENT_NODE) return;
           // the grid draws its own cells (thousands of nodes) and holds no note markers
           if ((n as HTMLElement).closest('.wcg-view-root')) return;
-          decorateSquares(n as HTMLElement, this.settings.squares, this.squareImageUrl);
+          decorateSquares(n as HTMLElement, markerSquares(this.settings), this.squareImageUrl);
         });
       }
     });
@@ -229,7 +242,7 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
 
   private refreshSquares(): void {
     activeDocument.body.toggleClass('wcg-notes-circle', this.settings.noteShape === 'circle');
-    decorateSquares(activeDocument.body, this.settings.squares, this.squareImageUrl);
+    decorateSquares(activeDocument.body, markerSquares(this.settings), this.squareImageUrl);
   }
 
   /** Resource URL of a vault image by name (for image squares drawn as a class span in notes). */
@@ -261,13 +274,31 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
     this.dayCells = data.dayCells ?? {};
     this.dayBuiltAt = data.dayBuiltAt ?? 0;
     this.rebuildCalendar();
+    this.syncMobileButton();
     this.refreshSquares();
     this.debounce.run('apply-settings', 400, () => { void this.applySettings(); });
   }
 
   /** Called by the setting tab after it edited `settings` in place. */
+  /** Show or remove the floating grid button (mobile only), following settings.showMobileButton. */
+  private syncMobileButton(): void {
+    const want = Platform.isMobile && this.settings.showMobileButton && !this.unloaded;
+    if (want && !this.fab) {
+      this.fab = activeDocument.body.createEl('button', {
+        cls: 'wcg-fab',
+        attr: { 'aria-label': 'Week Life Circles' },
+      });
+      makeIcon(this.fab, ICON_CALENDAR);
+      this.fab.addEventListener('click', () => { void this.activateWeekView(); });
+    } else if (!want && this.fab) {
+      this.fab.remove();
+      this.fab = null;
+    }
+  }
+
   async saveSettings(): Promise<void> {
     this.syncLanguage(); // the language picker and an imported config both land here
+    this.syncMobileButton();
     this.rebuildCalendar();
     this.refreshSquares();
     await this.persist();
@@ -297,10 +328,14 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
 
   private currentCacheInputs(): Record<Kind, string> {
     const s = this.settings;
-    const keys = this.squareKeys();
+    const keys = this.squareKeys('week');
+    const names = s.squares.map(q => q.name);
+    const dayKeys = this.squareKeys('day');
+    const dayNames = daySquareSet(s).map(q => q.name);
     return {
-      week: JSON.stringify([s.weekFolder, keys]),
-      day: JSON.stringify([s.dayFolder, keys, s.birthDate, s.startAtCurrentYear, s.startAge, s.endAge, s.yearStart, s.yearStartDate]),
+      // circle names count too: a property value may name a circle
+      week: JSON.stringify([s.weekFolder, keys, s.circleProperty, names]),
+      day: JSON.stringify([s.dayFolder, dayKeys, s.circleProperty, dayNames, s.birthDate, s.startAtCurrentYear, s.startAge, s.endAge, s.yearStart, s.yearStartDate]),
     };
   }
 
@@ -349,6 +384,20 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
 
   openCreateDay(yy: number, doy: number): void {
     new CreateDayModal(this, { yy, doy }).open();
+  }
+
+  openSettings(): void {
+    const setting = (this.app as unknown as Record<string, unknown>).setting;
+    if (isSettingModal(setting)) {
+      try {
+        setting.open();
+        setting.openTabById(this.manifest.id);
+        return;
+      } catch (e) {
+        console.error('week-life-circles: cannot open the settings tab', e);
+      }
+    }
+    new Notice(t('notes.grid.settingsWhere'));
   }
 
   // ── Views ───────────────────────────────────────────────────────────────
@@ -421,8 +470,18 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
     return out;
   }
 
-  private squareKeys(): string[] {
-    return this.settings.squares.map(s => s.key);
+  /** The circles of week notes, or of day notes (the day set when it is on). */
+  private squareSet(kind: Kind): Settings['squares'] {
+    return kind === 'week' ? this.settings.squares : daySquareSet(this.settings);
+  }
+
+  private squareKeys(kind: Kind): string[] {
+    return this.squareSet(kind).map(s => s.key);
+  }
+
+  /** Where notes keep their circle as a frontmatter property (read whatever the marker style). */
+  private circleProp(kind: Kind): CircleProperty {
+    return { name: this.settings.circleProperty, squares: this.squareSet(kind) };
   }
 
   private readFile = (f: TFile): Promise<string> => this.app.vault.cachedRead(f);
@@ -501,7 +560,7 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
   private async updateWeekCell(file: TFile): Promise<boolean> {
     const p = parseWeekFilename(file.name);
     if (!p) return true;
-    const { squares, startWW, endWW } = await readWeekData(this.readFile, file, this.squareKeys());
+    const { squares, startWW, endWW } = await readWeekData(this.readFile, file, this.squareKeys('week'), this.circleProp('week'));
     // span file — continuation cells may have changed
     if (squares.length > 1 || (startWW !== null && endWW !== null)) return false;
     const yyk = String(p.yy), wwk = String(p.ww);
@@ -513,13 +572,14 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
   }
 
   private async buildWeekCache(): Promise<CellMap> {
-    const keys = this.squareKeys();
+    const keys = this.squareKeys('week');
+    const prop = this.circleProp('week');
 
     type Entry = { squares: string[]; startWW: number | null; endWW: number | null; path: string; ww: number; yy: number };
     const entries = await mapChunked(this.noteFiles('week'), READ_CHUNK, async (file): Promise<Entry | null> => {
       const p = parseWeekFilename(file.name);
       if (!p) return null;
-      const data = await this.tryRead(file, () => readWeekData(this.readFile, file, keys));
+      const data = await this.tryRead(file, () => readWeekData(this.readFile, file, keys, prop));
       return data && { ...data, path: file.path, ww: p.ww, yy: p.yy };
     });
     const fileMap: Record<string, Record<string, Entry>> = {};
@@ -579,7 +639,7 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
     const p = parseDayFilename(file.name);
     const pers = p ? this.calendar?.dateToPersonal(p.y, p.m, p.d) : null;
     if (!pers) return;
-    const { square } = await readDayData(this.readFile, file, this.squareKeys());
+    const { square } = await readDayData(this.readFile, file, this.squareKeys('day'), this.circleProp('day'));
     const yyk = String(pers.yy);
     if (!this.dayCells[yyk]) this.dayCells[yyk] = {};
     this.dayCells[yyk][String(pers.doy)] = { square: square || null, path: file.path };
@@ -589,12 +649,13 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
     const cal = this.calendar;
     // Day cells are keyed by the personal calendar: without one, keep what we have.
     if (!cal) return this.dayCells;
-    const keys = this.squareKeys();
+    const keys = this.squareKeys('day');
+    const prop = this.circleProp('day');
     const entries = await mapChunked(this.noteFiles('day'), READ_CHUNK, async file => {
       const p = parseDayFilename(file.name);
       const pers = p ? cal.dateToPersonal(p.y, p.m, p.d) : null;
       if (!pers) return null;
-      const data = await this.tryRead(file, () => readDayData(this.readFile, file, keys));
+      const data = await this.tryRead(file, () => readDayData(this.readFile, file, keys, prop));
       return data && { ...pers, square: data.square, path: file.path };
     });
     const cells: CellMap = {};
@@ -605,5 +666,53 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
       cells[yyk][String(e.doy)] = { square: e.square || null, path: e.path };
     }
     return this.storeCells('day', cells);
+  }
+
+  // ── Circle property migration ───────────────────────────────────────────
+
+  /** Dry run: plan which notes get the circle property, then let the user confirm. */
+  private async openCircleMigration(): Promise<void> {
+    const property = this.settings.circleProperty;
+    const files = new Map<string, TFile>();
+    const notes = (await mapChunked([...this.noteFiles('week'), ...this.noteFiles('day')], READ_CHUNK, async file => {
+      const text = await this.tryRead(file, () => this.readFile(file));
+      if (text === null) return null;
+      files.set(file.path, file);
+      const note: MigrationNote = { path: file.path, kind: this.isNotePath('week', file.path) ? 'week' : 'day', text };
+      return note;
+    })).filter((n): n is MigrationNote => n !== null);
+    const sets = { week: this.settings.squares, day: daySquareSet(this.settings) };
+    const plan = planCircleMigration(notes, sets, property);
+    if (plan.items.length === 0) {
+      new Notice(t('notes.migrate.nothing', { prop: property, has: plan.counts.hasProperty, unknown: plan.counts.unknown }));
+      return;
+    }
+    new CircleMigrationModal(this.app, plan, property, async () => {
+      let written = 0, failed = 0, changed = 0;
+      for (const item of plan.items) {
+        const file = files.get(item.path);
+        if (!file || this.app.vault.getAbstractFileByPath(item.path) !== file) { failed++; continue; }
+        try {
+          // The dry run may be minutes old: plan this note again from its current text and
+          // leave it alone if it changed meanwhile (other circles, or the property was added).
+          const text = await this.app.vault.read(file); // not cachedRead: the text on disk now
+          const now = planCircleMigration([{ path: item.path, kind: item.kind, text }], sets, property).items[0];
+          if (!now || JSON.stringify(now.values) !== JSON.stringify(item.values)) { changed++; continue; }
+          await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
+            if (Object.keys(fm).some(k => k.toLowerCase() === property.toLowerCase())) return; // set meanwhile
+            fm[property] = item.values.length === 1 ? item.values[0] : item.values;
+          });
+          written++;
+        } catch (e) {
+          console.error(`week-life-circles: cannot add the circle property to ${item.path}`, e);
+          failed++;
+        }
+      }
+      const parts = [failed > 0
+        ? t('notes.migrate.doneFailed', { n: written, failed })
+        : t('notes.migrate.done', { n: written })];
+      if (changed > 0) parts.push(t('notes.migrate.doneChanged', { n: changed }));
+      new Notice(parts.join(' '));
+    }).open();
   }
 }

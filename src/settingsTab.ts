@@ -1,7 +1,9 @@
 import { App, Notice, Plugin, PluginSettingTab, Setting, normalizePath, requestUrl } from 'obsidian';
-import { DEFAULT_SETTINGS, Language, Settings, normalizeSettings, encodeConfig, parseConfigPayload } from './config';
-import { SquareEditor } from './squareEditor';
-import { LANGUAGE_NAMES, t } from './i18n';
+import { DEFAULT_SETTINGS, Language, Settings, cleanPropertyName, normalizeSettings, encodeConfig, parseConfigPayload } from './config';
+import { ConfirmModal, SquareEditor } from './squareEditor';
+import { LANGUAGE_NAMES, resolveLang, t } from './i18n';
+import { STARTER_PRESETS, StarterPreset, starterWeekTemplate } from './i18n/strings/templates';
+import { formatDate, obsidianLocale } from './momentFmt';
 
 /**
  * What the settings tab needs from the plugin. A plain interface, NOT a
@@ -17,24 +19,25 @@ interface WlcHost {
   readonly currentAge: number | null;
 }
 
-type TextKey = 'birthDate' | 'yearStartDate' | 'weekFolder' | 'dayFolder' | 'weekTemplatePath' | 'dayTemplatePath' | 'immichUrl' | 'immichApiKey';
+type TextKey = 'birthDate' | 'yearStartDate' | 'weekFolder' | 'dayFolder' | 'weekTemplatePath' | 'dayTemplatePath' | 'vaultPhotoFolder' | 'immichUrl' | 'immichApiKey';
 
 export class WeekLifeCirclesSettingTab extends PluginSettingTab {
   private readonly host: WlcHost;
   private readonly squares: SquareEditor;
+  private readonly daySquares: SquareEditor;
 
   constructor(app: App, plugin: Plugin & WlcHost) {
     super(app, plugin);
     this.host = plugin;
-    this.squares = new SquareEditor({
-      app,
-      settings: this.host.settings,
-      save: () => this.host.saveSettings(),
-    });
+    const save = (): Promise<void> => this.host.saveSettings();
+    // getters, not the arrays: an imported config replaces the lists
+    this.squares = new SquareEditor({ app, settings: this.host.settings, list: () => this.host.settings.squares, save });
+    this.daySquares = new SquareEditor({ app, settings: this.host.settings, list: () => this.host.settings.daySquares, save });
   }
 
   hide(): void {
     this.squares.dispose(); // flushes a pending (debounced) save
+    this.daySquares.dispose();
     super.hide();
   }
 
@@ -54,6 +57,22 @@ export class WeekLifeCirclesSettingTab extends PluginSettingTab {
     const trim = (v: string): string => v.trim();
     const folder = (fallback: string) => (v: string): string => normalizePath(v.trim() || fallback);
     const optionalPath = (v: string): string => (v.trim() ? normalizePath(v.trim()) : '');
+    /** Whole-number setting; the stored value is clamped by normalizeSettings, shown again on blur. */
+    const addNumber = (name: string, key: 'photoWidth' | 'dayGridYears', desc: string): void => {
+      new Setting(containerEl).setName(name).setDesc(desc).addText(tx => {
+        tx.inputEl.type = 'number';
+        tx.setValue(String(s[key]));
+        tx.inputEl.addEventListener('change', () => {
+          const n = Number(tx.inputEl.value);
+          if (tx.inputEl.value !== '' && Number.isFinite(n)) {
+            s[key] = n;
+            s[key] = normalizeSettings(s)[key];
+            void save();
+          }
+          tx.setValue(String(s[key]));
+        });
+      });
+    };
 
     // --- Language ---
     new Setting(containerEl)
@@ -135,6 +154,11 @@ export class WeekLifeCirclesSettingTab extends PluginSettingTab {
         });
       });
     addAge(t('settings.endAge'), 'endAge', t('settings.endAgeDesc'));
+    addNumber(t('settings.dayGridYears'), 'dayGridYears', t('settings.dayGridYearsDesc'));
+    new Setting(containerEl)
+      .setName(t('settings.showMobileButton'))
+      .setDesc(t('settings.showMobileButtonDesc'))
+      .addToggle(tg => tg.setValue(s.showMobileButton).onChange(v => { s.showMobileButton = v; void save(); }));
 
     // --- Circles (previewed in the grid's current view; the view is switched from the grid's toolbar) ---
     new Setting(containerEl).setName(t('settings.circles')).setHeading()
@@ -147,21 +171,100 @@ export class WeekLifeCirclesSettingTab extends PluginSettingTab {
         .addOption('square', t('settings.shapeSquare'))
         .setValue(s.noteShape)
         .onChange(v => { s.noteShape = v === 'square' ? 'square' : 'circle'; void save(); }));
+    new Setting(containerEl)
+      .setName(t('settings.markerStyle'))
+      .setDesc(t('settings.markerStyleDesc'))
+      .addDropdown(d => d
+        .addOption('inline', t('settings.markerInline'))
+        .addOption('property', t('settings.markerProperty'))
+        .addOption('both', t('settings.markerBoth'))
+        .setValue(s.markerStyle)
+        .onChange(v => { s.markerStyle = v === 'inline' || v === 'property' ? v : 'both'; void save(); }));
+    new Setting(containerEl)
+      .setName(t('settings.circleProperty'))
+      .setDesc(t('settings.circlePropertyDesc'))
+      .addText(tx => tx.setPlaceholder(DEFAULT_SETTINGS.circleProperty).setValue(s.circleProperty).onChange(v => {
+        s.circleProperty = cleanPropertyName(v);
+        void save();
+      }));
     this.squares.mount(containerEl);
+    new Setting(containerEl)
+      .setName(t('settings.daySquaresEnabled'))
+      .setDesc(t('settings.daySquaresEnabledDesc'))
+      .addToggle(tg => tg.setValue(s.daySquaresEnabled).onChange(async v => {
+        s.daySquaresEnabled = v;
+        await save();
+        this.display(); // show or hide the day circles
+      }));
+    if (s.daySquaresEnabled) {
+      new Setting(containerEl).setName(t('settings.daySquares')).setHeading().setDesc(t('settings.daySquaresDesc'));
+      this.daySquares.mount(containerEl);
+    }
 
     // --- Notes ---
     new Setting(containerEl).setName(t('settings.notes')).setHeading();
     addText(t('settings.weekFolder'), 'weekFolder', folder(DEFAULT_SETTINGS.weekFolder));
     addText(t('settings.dayFolder'), 'dayFolder', folder(DEFAULT_SETTINGS.dayFolder));
+    new Setting(containerEl)
+      .setName(t('settings.dayLayout'))
+      .setDesc(t('settings.dayLayoutDesc'))
+      .addDropdown(d => d
+        .addOption('week', t('settings.dayLayoutWeek'))
+        .addOption('flat', t('settings.dayLayoutFlat'))
+        .addOption('month', t('settings.dayLayoutMonth'))
+        .setValue(s.dayLayout)
+        .onChange(v => { s.dayLayout = v === 'week' || v === 'month' ? v : 'flat'; void save(); }));
+    new Setting(containerEl)
+      .setName(t('settings.attachmentLocation'))
+      .setDesc(t('settings.attachmentLocationDesc'))
+      .addDropdown(d => d
+        .addOption('week-folder', t('settings.attachmentWeekFolder'))
+        .addOption('obsidian', t('settings.attachmentObsidian'))
+        .setValue(s.attachmentLocation)
+        .onChange(v => { s.attachmentLocation = v === 'week-folder' ? v : 'obsidian'; void save(); }));
+    addNumber(t('settings.photoWidth'), 'photoWidth', t('settings.photoWidthDesc'));
+    addText(t('settings.vaultPhotoFolder'), 'vaultPhotoFolder', optionalPath, t('settings.vaultPhotoFolderDesc'));
     addText(t('settings.weekTemplatePath'), 'weekTemplatePath', optionalPath, t('settings.weekTemplatePathDesc'));
     addText(t('settings.dayTemplatePath'), 'dayTemplatePath', optionalPath, t('settings.dayTemplatePathDesc'));
+    new Setting(containerEl)
+      .setName(t('settings.legacyTemplates'))
+      .setDesc(t('settings.legacyTemplatesDesc'))
+      .addToggle(tg => tg.setValue(s.legacyTemplates).onChange(v => { s.legacyTemplates = v; void save(); }));
 
-    const ph = t('settings.placeholders', { tpl: '{{ww}} {{yy}} {{circle}} {{date}} {{photos}} {{weekday}}' });
-    new Setting(containerEl).setName(t('settings.weekTemplate')).setDesc(ph).addTextArea(tx => {
+    const example = (): string => t('settings.dateFormatDesc', { example: formatDate(new Date(), s.dateFormat) });
+    const dateSetting = new Setting(containerEl).setName(t('settings.dateFormat')).setDesc(example());
+    dateSetting.addText(tx => tx.setPlaceholder(DEFAULT_SETTINGS.dateFormat).setValue(s.dateFormat).onChange(v => {
+      s.dateFormat = v.trim() || DEFAULT_SETTINGS.dateFormat;
+      dateSetting.setDesc(example());
+      void save();
+    }));
+
+    const weekPh = t('settings.placeholders', { tpl: '{{ww}} {{yy}} {{circle}} {{date}} {{weekEnd}} {{today}} {{days}} {{photos}}' });
+    const dayPh = t('settings.placeholders', { tpl: '{{circle}} {{date}} {{weekday}} {{yesterday}} {{today}}' });
+    new Setting(containerEl).setName(t('settings.weekTemplate')).setDesc(weekPh).addTextArea(tx => {
       tx.inputEl.rows = 10;
       tx.setValue(s.weekTemplate).onChange(async v => { s.weekTemplate = v; await save(); });
     });
-    new Setting(containerEl).setName(t('settings.dayTemplate')).setDesc(ph).addTextArea(tx => {
+    const presetName: Record<StarterPreset, string> = {
+      minimal: t('settings.starterMinimal'),
+      journal: t('settings.starterJournal'),
+      reflection: t('settings.starterReflection'),
+    };
+    let preset: StarterPreset = 'journal';
+    new Setting(containerEl)
+      .setName(t('settings.starterTemplate'))
+      .setDesc(t('settings.starterTemplateDesc'))
+      .addDropdown(d => {
+        for (const p of STARTER_PRESETS) d.addOption(p, presetName[p]);
+        d.setValue(preset).onChange(v => { preset = STARTER_PRESETS.find(p => p === v) ?? 'journal'; });
+      })
+      .addButton(b => b.setButtonText(t('settings.starterLoad')).onClick(() => {
+        new ConfirmModal(this.app, t('settings.starterConfirm', { name: presetName[preset] }), t('settings.starterReplace'), () => {
+          s.weekTemplate = starterWeekTemplate(preset, resolveLang(s.language, obsidianLocale()));
+          void save().then(() => this.display());
+        }).open();
+      }));
+    new Setting(containerEl).setName(t('settings.dayTemplate')).setDesc(dayPh).addTextArea(tx => {
       tx.inputEl.rows = 4;
       tx.setValue(s.dayTemplate).onChange(async v => { s.dayTemplate = v; await save(); });
     });

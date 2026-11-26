@@ -40,9 +40,10 @@ describe('migrate', () => {
     expect(keys).toContain('custom-x.png');
     expect(new Set(keys).size).toBe(keys.length);
     expect(s.squares.length).toBe(DEFAULT_SETTINGS.squares.length + 1);
-    expect(s.weekTemplate).toBe(DEFAULT_SETTINGS.weekTemplate);
+    // the default templates, with {{date}} kept at its old meaning (see legacyTemplates.test.ts)
+    expect(s.weekTemplate).toBe(DEFAULT_SETTINGS.weekTemplate.replace(/\{\{date\}\}/g, '{{today}}'));
     expect(s.weekTemplate).not.toContain('Été à Paris');
-    expect(s.dayTemplate).toBe(DEFAULT_SETTINGS.dayTemplate);
+    expect(s.dayTemplate).toBe(DEFAULT_SETTINGS.dayTemplate.replace(/\{\{date\}\}/g, '{{date:YYYY-MM-DD}}'));
     expect(s.immichEnabled).toBe(false);
     expect(data.cells['21']['1'].square).toBe('work.png');
     expect(data.builtAt).toBe(123);

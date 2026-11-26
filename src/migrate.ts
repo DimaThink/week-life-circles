@@ -1,4 +1,6 @@
-import { CellMap, Settings, DEFAULT_SETTINGS, DEFAULT_SQUARES, SquareDef, normalizeSettings } from './config';
+import {
+  CellMap, Settings, DEFAULT_SETTINGS, DEFAULT_SQUARES, SquareDef, normalizeSettings, legacyDayTemplate, legacyWeekTemplate,
+} from './config';
 
 export interface SavedData {
   settings: Settings;
@@ -31,7 +33,8 @@ interface LegacyData {
 
 const LEGACY_KEYS = ['cells', 'customSquares', 'dayCells', 'builtAt', 'dayBuiltAt'];
 
-export function migrate(raw: unknown): { data: SavedData; migrated: boolean } {
+/** `fresh`: nothing usable was saved (a new install), so first-run defaults may be applied. */
+export function migrate(raw: unknown): { data: SavedData; migrated: boolean; fresh: boolean } {
   const isObject = raw !== null && typeof raw === 'object' && !Array.isArray(raw);
   const hasSettings = isObject && 'settings' in raw && !!raw.settings;
   // Anything that is neither our data nor the old plugin's is treated as a fresh install.
@@ -39,14 +42,25 @@ export function migrate(raw: unknown): { data: SavedData; migrated: boolean } {
     return {
       data: { settings: normalizeSettings(DEFAULT_SETTINGS), cells: {}, builtAt: 0, dayCells: {}, dayBuiltAt: 0 },
       migrated: false,
+      fresh: true,
     };
   }
-  if (hasSettings) return { data: raw as SavedData, migrated: false };
+  if (hasSettings) return { data: raw as SavedData, migrated: false, fresh: false };
   const loaded = raw as LegacyData;
-  // Generic defaults only; the user's own customSquares are the one carry-over.
+  // Generic defaults; the user's own customSquares are the one carry-over. Notes written by
+  // the old plugin keep its behaviour, as for any settings saved before 1.10.
+  const base = normalizeSettings(DEFAULT_SETTINGS);
+  const squares = mergeSquares(loaded.customSquares);
   const settings: Settings = {
-    ...normalizeSettings(DEFAULT_SETTINGS),
-    squares: mergeSquares(loaded.customSquares),
+    ...base,
+    squares,
+    daySquares: squares.map(q => ({ ...q })),
+    dayLayout: 'week',
+    attachmentLocation: 'week-folder',
+    markerStyle: 'inline',
+    legacyTemplates: true,
+    weekTemplate: legacyWeekTemplate(base.weekTemplate),
+    dayTemplate: legacyDayTemplate(base.dayTemplate),
   };
   return {
     data: {
@@ -57,5 +71,6 @@ export function migrate(raw: unknown): { data: SavedData; migrated: boolean } {
       dayBuiltAt: loaded.dayBuiltAt ?? 0,
     },
     migrated: true,
+    fresh: false,
   };
 }

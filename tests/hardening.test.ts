@@ -5,6 +5,9 @@ import { squareMarkup, buildWeekNote } from '../src/templates';
 import { firstSquares, weekNotePath, parseWeekFilename } from '../src/weekFiles';
 import { migrate } from '../src/migrate';
 
+/** Inline markers only (the pre-1.10 output these template tests describe). */
+const INLINE = { ...DEFAULT_SETTINGS, markerStyle: 'inline' as const };
+
 describe('normalizeSettings hardening', () => {
   it('drops null / non-object / keyless elements of a stored squares array', () => {
     const squares = [null, 7, 'x', {}, { key: '' }, { key: 5 }, { key: 'a.png', name: 'A', color: '#111111' }] as never;
@@ -48,8 +51,10 @@ describe('squareMarkup', () => {
     expect(squareMarkup('constructor', DEFAULT_SQUARES)).toBe('![[constructor|14]]');
   });
   it('keeps `$` patterns in substituted values literal and matches extensions case-insensitively', () => {
-    const settings = { ...DEFAULT_SETTINGS, weekTemplate: '{{date}}|{{photos}}' };
-    const out = buildWeekNote({ ww: '01', yy: '28', square: 'work.png', dateStr: "$&$1$'", photoNames: ['a.JPG', 'b.mp4'], settings });
+    const settings = { ...INLINE, weekTemplate: '{{date}}|{{photos}}' };
+    const d = new Date(2026, 0, 1);
+    const out = buildWeekNote({ ww: '01', yy: '28', square: 'work.png', photoNames: ['a.JPG', 'b.mp4'], settings,
+      dates: { weekStart: d, weekEnd: d, today: d }, formatDate: () => "$&$1$'" });
     expect(out).toBe("$&$1$'|![[a.JPG|600]]\n![[b.mp4]]");
   });
 });

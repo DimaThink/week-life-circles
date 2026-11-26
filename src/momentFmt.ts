@@ -19,3 +19,6 @@ export function momentFmt(date: Date): { format(fmt: string): string } {
   const forced = forcedLocale();
   return forced ? m.locale(forced) : m;
 }
+
+/** `momentFmt(date).format(fmt)` as a plain function, for the pure note builders. */
+export const formatDate = (date: Date, fmt: string): string => momentFmt(date).format(fmt);

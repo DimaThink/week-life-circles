@@ -1,5 +1,6 @@
 import { ItemView } from 'obsidian';
 import type { WorkspaceLeaf } from 'obsidian';
+import { t } from '../i18n';
 import { GridHost, flashCell, reapplyPaging, renderDayGrid, renderWeekGrid, revealCell } from '../grid';
 
 export const WEEK_VIEW_TYPE = 'wlc-week-grid';
@@ -74,14 +75,14 @@ export abstract class GridView extends ItemView {
 
 export class WeekCalendarView extends GridView {
   getViewType(): string { return WEEK_VIEW_TYPE; }
-  getDisplayText(): string { return 'Week Life Circles'; }
+  getDisplayText(): string { return t('notes.grid.lifeWeeks'); }
   getIcon(): string { return 'calendar-days'; }
   protected render(): Promise<void> { return renderWeekGrid(this.contentEl, this.host); }
 }
 
 export class DayCalendarView extends GridView {
   getViewType(): string { return DAY_VIEW_TYPE; }
-  getDisplayText(): string { return 'Day Life Circles'; }
+  getDisplayText(): string { return t('notes.grid.lifeDays'); }
   getIcon(): string { return 'calendar'; }
   protected render(): Promise<void> { return renderDayGrid(this.contentEl, this.host); }
 }

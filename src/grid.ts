@@ -2,7 +2,7 @@ import { App, TFile } from 'obsidian';
 import { t } from './i18n';
 import type { HoverParent } from 'obsidian';
 import { Calendar, WEEKS_PER_YEAR, formatYMD, pad2 } from './calendar';
-import { Cell, CellMap, CellShape, Settings } from './config';
+import { Cell, CellMap, CellShape, Settings, SquareDef, daySquareSet } from './config';
 import { colorMap, squareImage } from './squares';
 import { dayLabel, isMonthStart } from './months';
 import { momentFmt } from './momentFmt';
@@ -30,6 +30,8 @@ export interface GridHost {
   rebuildDayCache(): Promise<CellMap>;
   openCreateWeek(yy: number, ww: number): void;
   openCreateDay(yy: number, doy: number): void;
+  /** Open this plugin's settings tab (or say where to find it). */
+  openSettings(): void;
 }
 
 type Shape = { tag: keyof SVGElementTagNameMap; attrs: Record<string, string> };
@@ -295,12 +297,12 @@ function shapeButton(toolbar: HTMLElement, host: GridHost): void {
   btn.addEventListener('click', () => host.setCellShape(next));
 }
 
-function renderNoBirthDate(el: HTMLElement): void {
+function renderNoBirthDate(el: HTMLElement, host: GridHost): void {
   el.empty();
-  el.createDiv({
-    cls: 'wcg-status',
-    text: t('notes.grid.noBirthDate'),
-  });
+  const status = el.createDiv({ cls: 'wcg-status' });
+  status.createDiv({ text: t('notes.grid.noBirthDate') });
+  const btn = status.createEl('button', { cls: 'mod-cta wcg-open-settings', text: t('notes.grid.openSettings') });
+  btn.addEventListener('click', () => host.openSettings());
 }
 
 /** Toolbar button that rebuilds a cache (spinning meanwhile), then re-renders. */
@@ -356,9 +358,9 @@ function cellClass(colOffset: boolean, isCur: boolean, filled: boolean, past: bo
 }
 
 /** Returns a function that fills a cell with its link (colour or image square) and click-to-open. */
-function linkFiller(host: GridHost): (cell: HTMLElement, d: Cell) => void {
-  const colors = colorMap(host.settings.squares);
-  const pictureOf = new Map(host.settings.squares.filter(q => !q.color).map(q => [q.key, squareImage(q)]));
+function linkFiller(host: GridHost, squares: SquareDef[]): (cell: HTMLElement, d: Cell) => void {
+  const colors = colorMap(squares);
+  const pictureOf = new Map(squares.filter(q => !q.color).map(q => [q.key, squareImage(q)]));
   const imageUrls = new Map<string, string | null>();
   // Only used for image-based squares (flags, photos, etc.)
   const imageUrl = (key: string): string | null => {
@@ -397,7 +399,7 @@ function linkFiller(host: GridHost): (cell: HTMLElement, d: Cell) => void {
 
 export async function renderWeekGrid(el: HTMLElement, host: GridHost): Promise<void> {
   const cal = host.calendar;
-  if (cal === null) { renderNoBirthDate(el); return; }
+  if (cal === null) { renderNoBirthDate(el, host); return; }
 
   const { outer, root, headerTrack, toolbar, info } = renderShell(
     el, t('notes.grid.lifeWeeks'), host.transposed ? 'wcg-view-root wcg-transposed' : 'wcg-view-root', host.settings.cellShape);
@@ -414,7 +416,7 @@ export async function renderWeekGrid(el: HTMLElement, host: GridHost): Promise<v
   const cells = await ensureCells(root, t('notes.grid.buildingWeek'), host.weekCells, host.weekBuiltAt, () => host.rebuildWeekCache());
   info.setText(t('notes.grid.weekCount', { n: countCells(cells) }));
 
-  const fillLink = linkFiller(host);
+  const fillLink = linkFiller(host, host.settings.squares);
   const { startAge, endAge } = host.ageRange;
   const { yy: curYY, ww: curWW } = cal.personalYearWeek();
   const years = Array.from({ length: endAge - startAge + 1 }, (_, i) => i + startAge);
@@ -472,7 +474,7 @@ export async function renderWeekGrid(el: HTMLElement, host: GridHost): Promise<v
 
 export async function renderDayGrid(el: HTMLElement, host: GridHost): Promise<void> {
   const cal = host.calendar;
-  if (cal === null) { renderNoBirthDate(el); return; }
+  if (cal === null) { renderNoBirthDate(el, host); return; }
 
   const { outer, root, headerTrack, toolbar, info } = renderShell(
     el, t('notes.grid.lifeDays'), 'wcg-view-root wcg-day-mode', host.settings.cellShape);
@@ -483,14 +485,14 @@ export async function renderDayGrid(el: HTMLElement, host: GridHost): Promise<vo
   const cells = await ensureCells(root, t('notes.grid.buildingDay'), host.dayCells, host.dayBuiltAt, () => host.rebuildDayCache());
   info.setText(t('notes.grid.dayCount', { n: countCells(cells) }));
 
-  const fillLink = linkFiller(host);
+  const fillLink = linkFiller(host, daySquareSet(host.settings));
   const today = new Date();
   const todayP = cal.dateToPersonal(today.getFullYear(), today.getMonth() + 1, today.getDate());
   const curYY = todayP?.yy ?? null;
   const curDOY = todayP?.doy ?? null;
 
-  // Day view shows 10 years starting at the current personal year.
-  const DAY_VIEW_YEARS = 10;
+  // Day view shows settings.dayGridYears years starting at the current personal year.
+  const DAY_VIEW_YEARS = host.settings.dayGridYears;
   const startYY = curYY ?? host.ageRange.startAge;
   // never past the last configured year: later days could not be stored under a valid personal year
   const lastYY = Math.max(startYY, host.ageRange.endAge);

@@ -11,8 +11,10 @@ import {
 /** What the squares editor needs from the settings tab. */
 export interface SquareEditorHost {
   readonly app: App;
-  /** Live settings fields, edited in place. */
-  readonly settings: { squares: SquareDef[]; cellShape: CellShape };
+  /** Live settings fields (read only here). */
+  readonly settings: { cellShape: CellShape };
+  /** The circle list this editor edits — the week circles or the day set — changed in place. */
+  list(): SquareDef[];
   save(): Promise<void>;
 }
 
@@ -106,7 +108,7 @@ class VaultImageModal extends FuzzySuggestModal<TFile> {
   onChooseItem(f: TFile): void { this.onPick(f); }
 }
 
-class ConfirmModal extends Modal {
+export class ConfirmModal extends Modal {
   constructor(app: App, private readonly text: string, private readonly action: string, private readonly onYes: () => void) {
     super(app);
   }
@@ -183,33 +185,35 @@ export class SquareEditor {
     el.empty();
     const { app, settings } = this.host;
     const shape = settings.cellShape;
+    const squares = this.host.list();
 
     this.renderRestore(el);
     const strip = el.createDiv({ cls: 'wcg-sq-strip' });
     this.stripLabels.clear();
-    for (const q of settings.squares) {
+    for (const q of squares) {
       const item = strip.createDiv({ cls: 'wcg-sq-strip-item', attr: { title: q.name } });
       renderSquarePreview(app, item, q, shape);
       this.stripLabels.set(q, item.createDiv({ cls: 'wcg-sq-strip-label', text: q.name }));
     }
-    if (settings.squares.length === 0) strip.createDiv({ cls: 'setting-item-description', text: t('circles.noCircles') });
+    if (squares.length === 0) strip.createDiv({ cls: 'setting-item-description', text: t('circles.noCircles') });
 
-    settings.squares.forEach((q, i) => this.renderRow(el, q, i));
+    squares.forEach((q, i) => this.renderRow(el, q, i));
     this.renderAdd(el);
   }
 
   /** "Restore the default circles": replaces the whole list after a confirmation. */
   private renderRestore(parent: HTMLElement): void {
-    const { app, settings } = this.host;
+    const { app } = this.host;
+    const squares = this.host.list();
     new Setting(parent)
       .setName(t('circles.defaultsName'))
       .setDesc(t('circles.defaultsDesc'))
       .addButton(b => b.setButtonText(t('circles.restoreDefaults')).onClick(() => {
         new ConfirmModal(app,
-          t(settings.squares.length === 1 ? 'circles.restoreConfirmOne' : 'circles.restoreConfirmMany', { n: settings.squares.length }),
+          t(squares.length === 1 ? 'circles.restoreConfirmOne' : 'circles.restoreConfirmMany', { n: squares.length }),
           t('circles.replace'),
           () => {
-            settings.squares.splice(0, settings.squares.length, ...DEFAULT_SQUARES.map(q => ({ ...q })));
+            squares.splice(0, squares.length, ...DEFAULT_SQUARES.map(q => ({ ...q })));
             void this.saveNow().then(() => this.render());
           }).open();
       }));
@@ -294,21 +298,22 @@ export class SquareEditor {
 
     row.addExtraButton(b => b.setIcon('arrow-up').setTooltip(t('circles.moveUp')).setDisabled(i === 0)
       .onClick(() => { void this.move(i, i - 1); }));
-    row.addExtraButton(b => b.setIcon('arrow-down').setTooltip(t('circles.moveDown')).setDisabled(i === settings.squares.length - 1)
+    row.addExtraButton(b => b.setIcon('arrow-down').setTooltip(t('circles.moveDown')).setDisabled(i === this.host.list().length - 1)
       .onClick(() => { void this.move(i, i + 1); }));
     row.addExtraButton(b => b.setIcon('trash').setTooltip(t('circles.delete')).onClick(() => {
       new ConfirmModal(app,
         t('circles.deleteConfirm', { name: q.name }),
         t('circles.delete'), () => {
-          const at = settings.squares.indexOf(q);
-          if (at !== -1) settings.squares.splice(at, 1);
+          const list = this.host.list();
+          const at = list.indexOf(q);
+          if (at !== -1) list.splice(at, 1);
           void this.saveNow().then(() => this.render());
         }).open();
     }));
   }
 
   private async move(from: number, to: number): Promise<void> {
-    const sq = this.host.settings.squares;
+    const sq = this.host.list();
     const moved = moveItem(sq, from, to);
     sq.splice(0, sq.length, ...moved); // in place: the settings object is shared
     await this.saveNow();
@@ -317,12 +322,12 @@ export class SquareEditor {
 
   /** Colour square → image square from an uploaded picture; true once converted. */
   private async convertToUpload(q: SquareDef, anchor: HTMLElement): Promise<boolean> {
-    const { app, settings } = this.host;
+    const { app } = this.host;
     const picked = await pickImageFile(anchor);
     if (!picked) return false;
     try {
       const bytes = await toSquareImage(picked, 'image/png');
-      const taken = imageNamesTaken(app, settings.squares.map(s => s.key));
+      const taken = imageNamesTaken(app, this.host.list().map(s => s.key));
       const file = await createSquareImage(app, uniqueImageName(slugify(q.name), taken), bytes);
       q.color = null;
       q.image = file.name;
@@ -429,10 +434,11 @@ export class SquareEditor {
   }
 
   private async addSquare(): Promise<void> {
-    const { app, settings } = this.host;
+    const { app } = this.host;
+    const squares = this.host.list();
     const name = this.newName.trim();
     if (!name) { new Notice(t('circles.nameFirst')); return; }
-    const keys = settings.squares.map(q => q.key);
+    const keys = squares.map(q => q.key);
     let sq: SquareDef;
     try {
       if (this.newMode === 'color') {
@@ -457,8 +463,8 @@ export class SquareEditor {
       new Notice(t('circles.addFail', { msg: (e as Error).message }));
       return;
     }
-    if (settings.squares.some(q => q.key === sq.key)) { new Notice(t('circles.alreadyCircle')); return; }
-    settings.squares.push(sq);
+    if (squares.some(q => q.key === sq.key)) { new Notice(t('circles.alreadyCircle')); return; }
+    squares.push(sq);
     this.newName = '';
     this.setPending(null);
     await this.saveNow();

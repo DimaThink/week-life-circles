@@ -1,12 +1,13 @@
 import { App, Modal, Notice, Setting, TFile } from 'obsidian';
 import { t } from '../i18n';
-import type { Settings } from '../config';
-import { Calendar, formatYMD, pad2, weekOfDoy } from '../calendar';
+import { daySquareSet, type Settings } from '../config';
+import { Calendar, formatYMD } from '../calendar';
 import type { ImmichClient } from '../immich';
 import { renderDayTemplate } from '../templates';
-import { ensureFolder } from '../vaultUtil';
-import { momentFmt } from '../momentFmt';
-import { defaultSquareKey, renderSquarePicker } from './swatches';
+import { ensureParentFolders } from '../vaultUtil';
+import { dayNotePath } from '../notePaths';
+import { formatDate, momentFmt } from '../momentFmt';
+import { defaultDaySquareKey, renderSquarePicker } from './swatches';
 
 
 export interface ModalHost {
@@ -24,7 +25,7 @@ export class CreateDayModal extends Modal {
 
   constructor(private readonly host: ModalHost, private readonly target: { yy: number; doy: number }) {
     super(host.app);
-    this.square = defaultSquareKey(host.settings);
+    this.square = defaultDaySquareKey(host.settings);
     this.date = host.calendar ? host.calendar.personalToDate(target.yy, target.doy) : null;
     if (this.date) {
       this.dateStr = formatYMD(this.date);
@@ -40,7 +41,7 @@ export class CreateDayModal extends Modal {
       return;
     }
     contentEl.createEl('p', { text: `${this.dateStr} · ${this.weekdayName}`, cls: 'setting-item-description' });
-    renderSquarePicker(this.app, contentEl, t('notes.dayType'), this.host.settings.squares, this.square,
+    renderSquarePicker(this.app, contentEl, t('notes.dayType'), daySquareSet(this.host.settings), this.square,
       k => { this.square = k; });
     new Setting(contentEl)
       .addButton(btn => btn.setButtonText(t('notes.create')).setCta().onClick(() => { void this.create(); }));
@@ -54,14 +55,13 @@ export class CreateDayModal extends Modal {
       const tpl = vault.getAbstractFileByPath(path);
       if (tpl instanceof TFile) templateRaw = await vault.read(tpl);
     }
-    const yest = new Date(date.getFullYear(), date.getMonth(), date.getDate() - 1);
     return renderDayTemplate({
       templateRaw,
-      dateStr: this.dateStr,
-      weekdayName: this.weekdayName,
-      yesterdayStr: formatYMD(yest),
+      day: date,
+      today: new Date(),
       square: this.square,
       settings: this.host.settings,
+      formatDate,
     });
   }
 
@@ -82,17 +82,15 @@ export class CreateDayModal extends Modal {
     if (!this.date) return;
     try {
       const { vault, workspace } = this.host.app;
-      const dayFolder = this.host.settings.dayFolder;
-      const folder = `${dayFolder}/${pad2(weekOfDoy(this.target.doy))}.${pad2(this.target.yy)}`;
-      const filePath = `${folder}/${this.dateStr}.md`;
+      const { dayFolder, dayLayout } = this.host.settings;
+      const filePath = dayNotePath(dayFolder, dayLayout, this.date, this.target);
 
       if (vault.getAbstractFileByPath(filePath)) {
         new Notice(t('notes.exists', { path: filePath }));
         return;
       }
       const body = await this.renderBody(this.date);
-      await ensureFolder(vault, dayFolder);
-      await ensureFolder(vault, folder);
+      await ensureParentFolders(vault, filePath);
       const file = await vault.create(filePath, body);
       this.close();
       new Notice(`✅ ${t('notes.created', { name: `${this.dateStr}.md` })}`);

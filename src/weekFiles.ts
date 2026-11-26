@@ -2,6 +2,7 @@
 
 import { pad2 } from "./calendar";
 import { squareClass } from "./squares";
+import { propertyCircles, type CircleProperty } from "./circleProperty";
 
 export type Reader<F> = (file: F) => Promise<string>;
 
@@ -51,11 +52,13 @@ export async function readWeekData<F extends { name: string }>(
   read: Reader<F>,
   file: F,
   squareKeys: string[],
+  prop?: CircleProperty,
 ): Promise<{ squares: string[]; startWW: number | null; endWW: number | null }> {
   const content = await read(file);
   const lines = content.split(/\r?\n/);
   const start = contentStart(lines);
-  const squares = firstSquares(lines, start, squareKeys);
+  // The circle property (one value per week the note covers) wins over inline markers.
+  const squares = (prop && propertyCircles(content, prop)) || firstSquares(lines, start, squareKeys);
 
   let startWW: number | null = null;
   let endWW: number | null = null;
