@@ -48,9 +48,11 @@ Prefer a calendar-style grid? **Year starts** lets each year begin on your birth
 - **One-click notes** — clicking an empty circle opens a dialog: pick the circle,
   optionally attach photos or videos (uploaded, or picked from a photo folder in your vault
   by the week's dates), and the note is created from your template.
-- **Circle as a property** — new notes can record their circle as a frontmatter
-  property (`circle: work`), so Bases, Dataview and search can use it. The command
-  **Add circle properties to existing notes** adds it to older notes (after a dry run).
+- **Circle as a property** — new notes record their circle as a frontmatter property
+  (`circle: work`) and keep no HTML in the text; the plugin draws the circle at the top of
+  the note by itself, in reading view, live preview and source mode. Bases, Dataview and
+  search can use the property. The command **Add circle properties to existing notes**
+  adds it to older notes (after a dry run).
 - **Multi-week notes** — one note can cover several weeks (`03-05.28` in its
   first lines, with one circle per week).
 - **Templates** — the week and day note templates are plain text in the settings,
@@ -100,6 +102,23 @@ property, the circle is read from the first lines of the note — a line such as
 `07.28 <span class="sq sq-work"></span> 18.11.2026`. Image circles are written as
 an embed: `![[england.png|14]]`.
 
+### The circle drawn from the property
+
+A week or day note whose property names a circle shows that circle at the top of the note
+without any markup in the note: it is drawn after the first word of the first line below
+the frontmatter, so `06.28 04.06.2026` reads as `06.28 ● 04.06.2026`. A note covering
+several weeks (`03-05.28 …` with a list property) shows one circle per list item, in order.
+When that first line is a heading (`# …`), the circle goes at the end of the heading. A
+day note shows its first circle.
+
+The drawn circle uses the circle's colour or image, the same size, shape and contrast ring
+as markers in the text, and follows changes to the property and to your circles at once. It
+is not part of the note text: it cannot be selected, copied or edited, and clicking it does
+nothing. It is drawn only for notes in the week and day folders whose names match `WW.YY.md`
+or `YYYY-MM-DD.md`, and never for a note whose first lines already have a marker in the text
+(a `<span class="sq …">`, a `` `sq:…` `` marker or a small circle image embed), so a note
+never shows its circle twice. Values that name no circle draw nothing.
+
 **Add circle properties to existing notes** (command palette) scans the week and day
 folders, shows how many notes have a marker but no property plus five examples, and only
 after you confirm adds the property (via Obsidian's frontmatter API). The markers in the
@@ -128,7 +147,7 @@ circles (an old-style embed may be a photo), are left alone; running it again is
 | Week template / Day template | Text of new notes; see the placeholders below. |
 | Starter template | Pick Minimal, Journal or Reflection and **Load** it to replace the week template (after a confirmation), in the plugin's current language. |
 | Marker shape in notes | Circle (default for new installs) or rounded square: how the marker at the top of a week/day note is drawn. Colour and image markers always share one size and shape. |
-| Circle in notes | How a new note records its circle: **Marker in the text** (the span/embed at the top), **Property** (frontmatter only; `{{circle}}` then renders empty) or **Both** (default for new installs; installs from 1.9 or earlier keep the marker only). The grid reads either. |
+| Circle in notes | How a new note records its circle. **Property** (default for new installs from 1.11): frontmatter only, no HTML in the note; `{{circle}}` renders empty and the plugin draws the circle at the top of the note (see *The circle drawn from the property*). **Marker in the text**: the span/embed at the top of the note, as in older versions. **Both**: the property and the marker (then only the marker is shown). A saved choice is kept on upgrade; installs from 1.9 or earlier keep the marker in the text. The grid reads either. |
 | Circle property | Name of that frontmatter property, default `circle`. |
 | Circles | **Restore defaults** brings back the seven default circles in one click. The list of circles, previewed in your cell shape. Each is a name plus a color, or an image. Rename, recolor, reorder (the first one is preselected for new notes) or delete them; **Replace image** uploads a new picture under the same file name, so existing notes keep working. A colour circle can become an image circle (upload or pick a picture) and back again; notes that already use it follow along and show its new look. **Add a circle**: pick a color, or upload an image (shrunk to a small PNG and saved to your attachments folder) or choose a PNG/JPG already in your vault. |
 | Separate circles for days | Off by default. When on, a second circle list (**Day circles**, edited the same way) is used by day notes, the day grid and the new-day dialog; week notes keep the circles above. The day list starts as a copy of your circles at the time of the upgrade (the seven defaults on a new install), so day notes you already have keep their circles. Markers of both lists are coloured inside notes. |

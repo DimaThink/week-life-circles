@@ -151,7 +151,7 @@ export const DEFAULT_SETTINGS: Settings = {
   squares: DEFAULT_SQUARES.map(q => ({ ...q })),
   daySquaresEnabled: false,
   daySquares: DEFAULT_SQUARES.map(q => ({ ...q })),
-  markerStyle: 'both',
+  markerStyle: 'property',
   circleProperty: DEFAULT_CIRCLE_PROPERTY,
   immichEnabled: false,
   immichUrl: '',

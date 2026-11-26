@@ -1,11 +1,11 @@
-import { Notice, Platform, Plugin, TAbstractFile, TFile, TFolder } from 'obsidian';
+import { MarkdownView, Notice, Platform, Plugin, TAbstractFile, TFile, TFolder } from 'obsidian';
 import { applyLanguage, resolveLang, t } from './i18n';
 import { obsidianLocale } from './momentFmt';
 import type { WorkspaceLeaf } from 'obsidian';
 import { CellMap, CellShape, Settings, DEFAULT_SETTINGS, normalizeSettings, parseBirthDate, resolveAnchor, ageRange, freshInstallSettings, daySquareSet, markerSquares } from './config';
 import { migrate, SavedData } from './migrate';
 import { Calendar, WEEKS_PER_YEAR } from './calendar';
-import { decorateSquares, squareImage } from './squares';
+import { decorateSquares, squareClass, squareImage } from './squares';
 import { parseWeekFilename, readWeekData, weekNotePath } from './weekFiles';
 import { parseDayFilename, readDayData } from './dayFiles';
 import { DAY_VIEW_TYPE, DayCalendarView, GridView, WEEK_VIEW_TYPE, WeekCalendarView } from './views/gridViews';
@@ -15,6 +15,8 @@ import { CreateDayModal, ModalHost } from './modals/createDayModal';
 import { CircleMigrationModal } from './modals/circleMigrationModal';
 import { planCircleMigration, type MigrationNote } from './circleMigration';
 import type { CircleProperty } from './circleProperty';
+import { circleNoteKind, planAutoCircles, planSignature, type AutoCirclePlan } from './autoCircle';
+import { AUTO_CIRCLE_CLASS, autoCircleEditorExtension, autoCirclePostProcessor, refreshEditorCircles, type AutoCircleHost } from './autoCircleView';
 import { ImmichClient } from './immich';
 import { WeekLifeCirclesSettingTab } from './settingsTab';
 
@@ -62,7 +64,7 @@ function isSettingModal(v: unknown): v is SettingModal {
   return typeof o.open === 'function' && typeof o.openTabById === 'function';
 }
 
-export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, ModalHost {
+export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, ModalHost, AutoCircleHost {
   // Replaced once in onload, then only edited in place: immich + the setting tab hold this reference.
   settings: Settings = normalizeSettings(DEFAULT_SETTINGS);
   /** The personal year you are in now (null until a valid birth date is set). */
@@ -85,6 +87,10 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
   /** Cache work runs one job at a time, so a slow rebuild cannot overwrite a newer result. */
   private cacheQueue: Promise<unknown> = Promise.resolve();
   private unloaded = false;
+  /** Bumped on every settings change: circles drawn from the note property are redrawn. */
+  autoCircleVersion = 0;
+  /** Circles drawn last for each open note, to re-render reading view only when they change. */
+  private readonly autoCircleSigs = new Map<string, string>();
 
   async onload(): Promise<void> {
     const { data, migrated, fresh } = migrate(await this.loadData());
@@ -144,12 +150,19 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
     this.registerMarkdownPostProcessor((el, ctx) => {
       const target = parseWeekFilename(ctx.sourcePath.split('/').pop() ?? '');
       decorateSquares(el, markerSquares(this.settings), this.squareImageUrl);
-      el.querySelectorAll('span.sq').forEach(span =>
+      el.querySelectorAll('span.sq').forEach(span => {
+        if (span.closest(`.${AUTO_CIRCLE_CLASS}`)) return; // the property circle is not a link to the grid
         span.addEventListener('click', e => {
           e.preventDefault(); e.stopPropagation();
           void this.activateWeekView(target);
-        }));
+        });
+      });
     });
+
+    // The circle named by the note's circle property, drawn without any markup in the note
+    this.registerMarkdownPostProcessor(autoCirclePostProcessor(this));
+    this.registerEditorExtension(autoCircleEditorExtension(this));
+    this.registerEvent(this.app.metadataCache.on('changed', (file, data) => this.onNoteChanged(file, data)));
 
     // PNG squares are embedded images resolved async — use a global listener instead
     this.registerDomEvent(activeDocument, 'click', (e: MouseEvent) => {
@@ -245,6 +258,61 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
     decorateSquares(activeDocument.body, markerSquares(this.settings), this.squareImageUrl);
   }
 
+  // ── Circle drawn from the note property ─────────────────────────────────
+
+  autoCirclePlan(path: string, text: () => string): AutoCirclePlan | null {
+    const kind = circleNoteKind(path, this.settings.weekFolder, this.settings.dayFolder);
+    if (!kind) return null;
+    try {
+      const plan = planAutoCircles(text(), kind, this.squareSet(kind), this.settings.circleProperty);
+      this.autoCircleSigs.set(path, planSignature(plan));
+      return plan;
+    } catch (e) {
+      console.error(`week-life-circles: cannot read the circle of ${path}`, e);
+      return null;
+    }
+  }
+
+  renderAutoCircles(keys: string[], atEnd: boolean): HTMLElement {
+    const squares = markerSquares(this.settings);
+    const wrap = createSpan({ cls: atEnd ? `${AUTO_CIRCLE_CLASS} is-end` : AUTO_CIRCLE_CLASS, attr: { contenteditable: 'false' } });
+    const names = keys.map(k => squares.find(q => q.key === k)?.name ?? k);
+    wrap.setAttr('aria-label', names.join(', '));
+    for (const key of keys) wrap.createSpan({ cls: `sq ${squareClass(key)}` });
+    decorateSquares(wrap, squares, this.squareImageUrl);
+    return wrap;
+  }
+
+  /** A note's text changed: re-render it in reading view when the circles it shows changed. */
+  private onNoteChanged(file: TFile, data: string): void {
+    const before = this.autoCircleSigs.get(file.path);
+    if (before === undefined) return; // not open, or not a week/day note
+    const plan = this.autoCirclePlan(file.path, () => data);
+    if (planSignature(plan) !== before) this.rerenderReading(file.path);
+  }
+
+  /** Re-render week/day notes open in reading view (all of them, or the one at `path`). */
+  private rerenderReading(path?: string): void {
+    this.app.workspace.iterateAllLeaves(leaf => {
+      const view = leaf.view;
+      if (!(view instanceof MarkdownView) || !view.file || view.getMode() !== 'preview') return;
+      if (path ? view.file.path !== path : !this.isAnyNotePath(view.file.path)) return;
+      view.previewMode.rerender(true);
+    });
+  }
+
+  /** Settings changed: redraw every circle drawn from a note property. */
+  private refreshAutoCircles(): void {
+    this.autoCircleVersion++;
+    this.autoCircleSigs.clear();
+    refreshEditorCircles();
+    this.rerenderReading();
+  }
+
+  private isAnyNotePath(path: string): boolean {
+    return circleNoteKind(path, this.settings.weekFolder, this.settings.dayFolder) !== null;
+  }
+
   /** Resource URL of a vault image by name (for image squares drawn as a class span in notes). */
   private readonly squareImageUrl = (name: string): string | null => {
     const f = this.app.metadataCache.getFirstLinkpathDest(name, '');
@@ -276,6 +344,7 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
     this.rebuildCalendar();
     this.syncMobileButton();
     this.refreshSquares();
+    this.debounce.run('auto-circles', 300, () => this.refreshAutoCircles()); // settings save per keystroke
     this.debounce.run('apply-settings', 400, () => { void this.applySettings(); });
   }
 
@@ -301,6 +370,7 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
     this.syncMobileButton();
     this.rebuildCalendar();
     this.refreshSquares();
+    this.debounce.run('auto-circles', 300, () => this.refreshAutoCircles()); // settings save per keystroke
     await this.persist();
     // Settings are saved per keystroke; the expensive follow-up waits for a pause.
     this.debounce.run('apply-settings', 400, () => { void this.applySettings(); });
@@ -452,10 +522,7 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
 
   /** Is `path` a week/day note: inside the configured folder, with a matching file name? */
   private isNotePath(kind: Kind, path: string): boolean {
-    const folder = kind === 'week' ? this.settings.weekFolder : this.settings.dayFolder;
-    if (!path.startsWith(folder + '/')) return false;
-    const name = path.slice(path.lastIndexOf('/') + 1);
-    return kind === 'week' ? !!parseWeekFilename(name) : !!parseDayFilename(name);
+    return circleNoteKind(path, this.settings.weekFolder, this.settings.dayFolder) === kind;
   }
 
   private noteFiles(kind: Kind): TFile[] {

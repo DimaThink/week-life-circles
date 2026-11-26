@@ -1,6 +1,6 @@
 {
   "name": "week-life-circles",
-  "version": "1.10.0",
+  "version": "1.11.0",
   "description": "Life-in-weeks grid journal: one colored circle per week or day of your life, each linked to a note.",
   "main": "main.js",
   "type": "module",
@@ -12,6 +12,8 @@
     "lint": "eslint src"
   },
   "devDependencies": {
+    "@codemirror/state": "6.7.6",
+    "@codemirror/view": "6.43.13",
     "@types/node": "^22.10.0",
     "esbuild": "^0.25.0",
     "eslint": "^9.39.5",

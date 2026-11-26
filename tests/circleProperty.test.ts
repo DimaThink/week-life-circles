@@ -162,12 +162,12 @@ describe('writing the circle into new notes', () => {
 });
 
 describe('settings: markerStyle and circleProperty', () => {
-  it('fresh install: both, property "circle"', () => {
-    expect(DEFAULT_SETTINGS.markerStyle).toBe('both');
+  it('fresh install: property only, property "circle"', () => {
+    expect(DEFAULT_SETTINGS.markerStyle).toBe('property');
     expect(DEFAULT_SETTINGS.circleProperty).toBe('circle');
-    expect(normalizeSettings({}).markerStyle).toBe('both');
-    expect(freshInstallSettings('uk').markerStyle).toBe('both');
-    expect(migrate(null).data.settings.markerStyle).toBe('both');
+    expect(normalizeSettings({}).markerStyle).toBe('property');
+    expect(freshInstallSettings('uk').markerStyle).toBe('property');
+    expect(migrate(null).data.settings.markerStyle).toBe('property');
   });
   it('settings saved by an older version keep inline markers only', () => {
     const s = normalizeSettings({ startAge: 0, endAge: 90 });
@@ -176,7 +176,7 @@ describe('settings: markerStyle and circleProperty', () => {
   });
   it('a saved choice is kept, an invalid one falls back', () => {
     expect(normalizeSettings({ startAge: 0, markerStyle: 'property' }).markerStyle).toBe('property');
-    expect(normalizeSettings({ markerStyle: 'weird' } as never).markerStyle).toBe('both');
+    expect(normalizeSettings({ markerStyle: 'weird' } as never).markerStyle).toBe('property');
     expect(normalizeSettings({ startAge: 0, markerStyle: 'weird' } as never).markerStyle).toBe('inline');
   });
   it('the property name is trimmed; unusable names fall back to "circle"', () => {
