@@ -116,7 +116,7 @@ describe('photo width', () => {
   const dates = { weekStart: day(2026, 11, 18), weekEnd: day(2026, 11, 24), today: day(2026, 11, 27) };
   const note = (photoWidth: number) => buildWeekNote({
     ww: '07', yy: '28', square: 'work.png', photoNames: ['a.jpg', 'b.mp4'], dates, formatDate: fmt,
-    settings: { ...DEFAULT_SETTINGS, photoWidth }, templateRaw: '{{photos}}',
+    settings: { ...DEFAULT_SETTINGS, weekProperty: false, photoWidth }, templateRaw: '{{photos}}',
   });
   it('images get |<width>, videos stay bare', () => {
     expect(note(600)).toBe('---\ncircle: work\n---\n![[a.jpg|600]]\n![[b.mp4]]');

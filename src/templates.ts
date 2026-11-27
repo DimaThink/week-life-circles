@@ -1,4 +1,5 @@
 import type { Settings } from './config';
+import { WEEK_PROPERTY } from './weekFiles';
 import { circleValue, withCircleProperty } from './circleProperty';
 
 // Extensions that embed as images (get the photoWidth display-width suffix); others embed bare
@@ -79,9 +80,10 @@ function dropCirclePlaceholders(text: string): string {
     .replace(/\{\{(?:circle|square)\}\}[ \t]?/g, '');
 }
 
-/** The finished note with the circle in its frontmatter property. */
-function withCircle(text: string, template: string, square: string, settings: Settings): string {
-  return withCircleProperty(text, templateProperty(template, settings.circleProperty), [circleValue(square)]);
+/** The finished note with its week (when on and known), then its circle, in the frontmatter. */
+function withCircle(text: string, template: string, square: string, settings: Settings, week: string | null): string {
+  const withWeek = settings.weekProperty && week ? withCircleProperty(text, WEEK_PROPERTY, [week]) : text;
+  return withCircleProperty(withWeek, templateProperty(template, settings.circleProperty), [circleValue(square)]);
 }
 
 /** Text of a new week note: the template note's text if one is set and found, else the settings template. */
@@ -100,18 +102,20 @@ export function buildWeekNote(opts: {
   return withCircle(fill(text,
     { ww, yy, photos, days },
     { date: dates.weekStart, today: dates.today, weekEnd: dates.weekEnd },
-    formatDate, settings.dateFormat), template, square, settings);
+    formatDate, settings.dateFormat), template, square, settings, `${ww}.${yy}`);
 }
 
 /** Text of a new day note, from the day template file (when found) or the settings text; same placeholders. */
 export function renderDayTemplate(opts: {
   templateRaw: string | null; day: Date; today: Date; square: string; settings: Settings;
   formatDate: DateFormatter;
+  /** The personal week of the day (`WW.YY`) for the week property; omitted = none. */
+  week?: string | null;
 }): string {
   const { templateRaw, day, today, square, settings, formatDate } = opts;
   const template = templateRaw ?? settings.dayTemplate;
   return withCircle(fill(dropCirclePlaceholders(template),
     { weekday: formatDate(day, 'dddd') },
     { date: day, today, yesterday: addDays(day, -1) },
-    formatDate, settings.dateFormat), template, square, settings);
+    formatDate, settings.dateFormat), template, square, settings, opts.week ?? null);
 }

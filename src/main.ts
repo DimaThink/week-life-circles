@@ -6,7 +6,7 @@ import { CellMap, CellShape, Settings, DEFAULT_SETTINGS, normalizeSettings, pars
 import { migrate, SavedData } from './migrate';
 import { Calendar, WEEKS_PER_YEAR } from './calendar';
 import { decorateSquares, squareClass, squareImage } from './squares';
-import { parseWeekFilename, readWeekData, weekNotePath } from './weekFiles';
+import { dayNoteWeek, parseWeekFilename, readWeekData, weekNoteWeek, weekNotePath, WEEK_PROPERTY } from './weekFiles';
 import { parseDayFilename, readDayData } from './dayFiles';
 import { DAY_VIEW_TYPE, DayCalendarView, GridView, WEEK_VIEW_TYPE, WeekCalendarView } from './views/gridViews';
 import { GridHost, HOVER_SOURCE, ICON_CALENDAR, makeIcon } from './grid';
@@ -819,7 +819,15 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
       return note;
     })).filter((n): n is MigrationNote => n !== null);
     const sets = { week: this.settings.squares, day: daySquareSet(this.settings) };
-    const plan = planCircleMigration(notes, sets, names);
+    const cal = this.calendar;
+    const weekOf = this.settings.weekProperty ? (note: MigrationNote): string | null => {
+      const name = note.path.slice(note.path.lastIndexOf('/') + 1);
+      if (note.kind === 'week') return weekNoteWeek(name, note.text);
+      const d = parseDayFilename(name);
+      const pers = d && cal ? cal.dateToPersonal(d.y, d.m, d.d) : null;
+      return pers ? dayNoteWeek(pers) : null;
+    } : undefined;
+    const plan = planCircleMigration(notes, sets, names, weekOf);
     if (plan.items.length === 0) {
       new Notice(t('notes.migrate.nothing', { prop: property, has: plan.counts.hasProperty, unknown: plan.counts.unknown }));
       return;
@@ -833,20 +841,26 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
           // The dry run may be minutes old: plan this note again from its current text and
           // leave it alone if it changed meanwhile (other circles, or the property was added).
           const text = await this.app.vault.read(file); // not cachedRead: the text on disk now
-          const replan = (cur: string) => planCircleMigration([{ path: item.path, kind: item.kind, text: cur }], sets, names).items[0];
+          const replan = (cur: string) => planCircleMigration([{ path: item.path, kind: item.kind, text: cur }], sets, names, weekOf).items[0];
           const now = replan(text);
-          if (!now || JSON.stringify(now.values) !== JSON.stringify(item.values)) { changed++; continue; }
-          // the property first: the marker is only removed once the circle is safe in the frontmatter
-          if (item.values.length > 0) {
+          const same = now && JSON.stringify([now.values, now.week, now.markerLine >= 0]) === JSON.stringify([item.values, item.week, item.markerLine >= 0]);
+          if (!same) { changed++; continue; }
+          // the properties first: the marker is only removed once the circle is safe in the frontmatter
+          if (item.values.length > 0 || item.week) {
             await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
-              if (Object.keys(fm).some(k => names.some(n => k.toLowerCase() === n.toLowerCase()))) return; // set meanwhile
-              fm[property] = item.values.length === 1 ? item.values[0] : item.values;
+              const hasKey = (n: string): boolean => Object.keys(fm).some(k => k.toLowerCase() === n.toLowerCase());
+              if (item.week && !hasKey(WEEK_PROPERTY)) fm[WEEK_PROPERTY] = item.week;
+              if (item.values.length > 0 && !names.some(hasKey)) { // not set meanwhile
+                fm[property] = item.values.length === 1 ? item.values[0] : item.values;
+              }
             });
           }
-          await this.app.vault.process(file, cur => {
-            const p = replan(cur);
-            return p && p.values.length === 0 ? stripInlineMarkers(cur, p.markerLine, sets[item.kind]) : cur;
-          });
+          if (item.markerLine >= 0) {
+            await this.app.vault.process(file, cur => {
+              const p = replan(cur);
+              return p && p.values.length === 0 && p.markerLine >= 0 ? stripInlineMarkers(cur, p.markerLine, sets[item.kind]) : cur;
+            });
+          }
           written++;
         } catch (e) {
           console.error(`week-life-circles: cannot move the circle of ${item.path} into its property`, e);

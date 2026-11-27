@@ -18,6 +18,7 @@ export class CircleMigrationModal extends Modal {
     const { counts, items } = this.plan;
     this.setTitle(t('notes.migrate.title'));
     contentEl.createEl('p', { text: t('notes.migrate.summary', { week: counts.week, day: counts.day, strip: counts.stripOnly, prop: this.property }) });
+    if (counts.weekProperty > 0) contentEl.createEl('p', { text: t('notes.migrate.weekProp', { n: counts.weekProperty }) });
     if (counts.hasProperty > 0 || counts.unknown > 0) {
       contentEl.createEl('p', {
         text: t('notes.migrate.skipped', { has: counts.hasProperty, unknown: counts.unknown }),
@@ -27,7 +28,8 @@ export class CircleMigrationModal extends Modal {
     contentEl.createEl('p', { text: t('notes.migrate.examples') });
     const list = contentEl.createEl('ul');
     for (const item of items.slice(0, EXAMPLES)) {
-      list.createEl('li', { text: item.values.length ? `${item.path} → ${this.property}: ${item.values.join(', ')}` : item.path });
+      const adds = [...(item.week ? [`week: ${item.week}`] : []), ...(item.values.length ? [`${this.property}: ${item.values.join(', ')}`] : [])];
+      list.createEl('li', { text: adds.length ? `${item.path} → ${adds.join('; ')}` : item.path });
     }
     contentEl.createEl('p', { text: t('notes.migrate.removes'), cls: 'setting-item-description' });
     new Setting(contentEl)

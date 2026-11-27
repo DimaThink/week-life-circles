@@ -1,8 +1,8 @@
 // Planning the one-off "move circles into the note property" migration (pure).
 
 import type { SquareDef } from './config';
-import { circleValue, hasAnyProperty } from './circleProperty';
-import { contentStart, extractSquares } from './weekFiles';
+import { circleValue, hasAnyProperty, readPropertyValues } from './circleProperty';
+import { contentStart, extractSquares, WEEK_PROPERTY } from './weekFiles';
 import { squareClass, squareImage } from './squares';
 
 export interface MigrationNote { path: string; kind: 'week' | 'day'; text: string }
@@ -11,17 +11,20 @@ export interface MigrationItem {
   kind: 'week' | 'day';
   /** Property values to add; empty when the note already has the property. */
   values: string[];
-  /** 0-based line of the note that holds the inline markers to remove. */
+  /** 0-based line of the note that holds the inline markers to remove; -1 = none. */
   markerLine: number;
+  /** Value of the `week` property to add; null = leave it (present already, off, or unknown). */
+  week: string | null;
 }
 export interface MigrationPlan {
   items: MigrationItem[];
   /**
    * week/day: notes that get the property (and lose their markers); stripOnly: notes that
    * already have the property and only lose their markers; hasProperty: notes with the
-   * property and no marker (nothing to do); unknown: a marker that is not a circle.
+   * property and no marker (nothing to do); unknown: a marker that is not a circle (its
+   * marker is left alone); weekProperty: notes that get the `week` property.
    */
-  counts: { week: number; day: number; stripOnly: number; hasProperty: number; unknown: number };
+  counts: { week: number; day: number; stripOnly: number; hasProperty: number; unknown: number; weekProperty: number };
 }
 
 /** Like firstSquares: the circles of the first line (within 5 of `start`) that has any, and that line. */
@@ -51,22 +54,33 @@ function hasUnknownSpan(line: string, keys: string[]): boolean {
  */
 export function planCircleMigration(
   notes: MigrationNote[], squares: SquareDef[] | Record<'week' | 'day', SquareDef[]>, properties: string[],
+  /** The `week` property value of a note (null = unknown); omitted = do not add the week property. */
+  weekOf?: (note: MigrationNote) => string | null,
 ): MigrationPlan {
   // one list for both kinds, or week notes against the week circles and day notes against the day set
   const sets = Array.isArray(squares) ? { week: squares, day: squares } : squares;
   const keysOf = { week: sets.week.map(q => q.key), day: sets.day.map(q => q.key) };
   const knownOf = { week: new Set(keysOf.week), day: new Set(keysOf.day) };
-  const plan: MigrationPlan = { items: [], counts: { week: 0, day: 0, stripOnly: 0, hasProperty: 0, unknown: 0 } };
+  const plan: MigrationPlan = { items: [], counts: { week: 0, day: 0, stripOnly: 0, hasProperty: 0, unknown: 0, weekProperty: 0 } };
   for (const note of notes) {
+    const week = weekOf && readPropertyValues(note.text, WEEK_PROPERTY) === null ? weekOf(note) : null;
     const has = hasAnyProperty(note.text, properties);
     const lines = note.text.split(/\r?\n/);
     const keys = keysOf[note.kind], known = knownOf[note.kind];
     const { found, index } = markerLine(lines, contentStart(lines), keys);
-    if (found.length === 0) { if (has) plan.counts.hasProperty++; continue; }
-    if (!found.every(k => known.has(k)) || hasUnknownSpan(lines[index], keys)) { plan.counts.unknown++; continue; }
-    const inline = note.kind === 'day' ? found.slice(0, 1) : found;
-    plan.items.push({ path: note.path, kind: note.kind, values: has ? [] : inline.map(circleValue), markerLine: index });
-    if (has) plan.counts.stripOnly++; else plan.counts[note.kind]++;
+    let marker: { values: string[]; index: number } | null = null;
+    if (found.length === 0) {
+      if (has) plan.counts.hasProperty++;
+    } else if (!found.every(k => known.has(k)) || hasUnknownSpan(lines[index], keys)) {
+      plan.counts.unknown++;
+    } else {
+      const inline = note.kind === 'day' ? found.slice(0, 1) : found;
+      marker = { values: has ? [] : inline.map(circleValue), index };
+      if (has) plan.counts.stripOnly++; else plan.counts[note.kind]++;
+    }
+    if (!marker && !week) continue;
+    if (week) plan.counts.weekProperty++;
+    plan.items.push({ path: note.path, kind: note.kind, values: marker?.values ?? [], markerLine: marker?.index ?? -1, week });
   }
   return plan;
 }

@@ -32,7 +32,7 @@ describe('week note dates', () => {
   const base = { ww: '07', yy: '28', square: 'work.png', photoNames: [] as string[], settings: SETTINGS, dates, formatDate: fmt };
 
   it('a week note starts with the circle property', () => {
-    expect(buildWeekNote({ ...base, templateRaw: '{{date}}' })).toBe('---\ncircle: work\n---\n18.11.2026');
+    expect(buildWeekNote({ ...base, templateRaw: '{{date}}' })).toBe('---\nweek: "07.28"\ncircle: work\n---\n18.11.2026');
   });
 
   it('{{date}} is the first day of the week, {{today}} the creation date, {{weekEnd}} the last day', () => {

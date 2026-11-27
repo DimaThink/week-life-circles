@@ -6,6 +6,7 @@ import type { ImmichClient } from '../immich';
 import { renderDayTemplate } from '../templates';
 import { ensureParentFolders } from '../vaultUtil';
 import { dayNotePath } from '../notePaths';
+import { dayNoteWeek } from '../weekFiles';
 import { formatDate, momentFmt } from '../momentFmt';
 import { defaultDaySquareKey, renderSquarePicker } from './swatches';
 
@@ -62,6 +63,7 @@ export class CreateDayModal extends Modal {
       square: this.square,
       settings: this.host.settings,
       formatDate,
+      week: dayNoteWeek(this.target),
     });
   }
 

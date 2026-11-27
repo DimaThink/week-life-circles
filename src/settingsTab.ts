@@ -187,6 +187,10 @@ export class WeekLifeCirclesSettingTab extends PluginSettingTab {
         .setPlaceholder('mood').setValue(PROPERTY_PRESETS.includes(s.circleProperty) ? '' : s.circleProperty)
         .onChange(v => { if (v.trim()) { s.circleProperty = cleanPropertyName(v); void save(); } }));
     }
+    new Setting(containerEl)
+      .setName(t('settings.weekProperty'))
+      .setDesc(t('settings.weekPropertyDesc'))
+      .addToggle(tg => tg.setValue(s.weekProperty).onChange(v => { s.weekProperty = v; void save(); }));
     this.squares.mount(containerEl);
     new Setting(containerEl)
       .setName(t('settings.daySquaresEnabled'))

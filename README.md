@@ -120,7 +120,8 @@ the text, so a note never shows its circle twice.
 
 **Move circle markers into properties** (command palette) scans the week and day folders
 and shows what it will do, with five examples; only after you confirm does it add the
-property (via Obsidian's frontmatter API) to every note that has a marker but no property,
+property (via Obsidian's frontmatter API) to every note that has a marker but no property
+(and, with **Week property** on, `week` to every note without it),
 then remove the marker from the text (`07.28 <span …></span> 18.11.2026` becomes
 `07.28 18.11.2026`; a line holding only the marker is removed). Notes whose marker is not
 one of your circles (an old-style embed may be a photo) are left alone; running it again is
@@ -147,6 +148,7 @@ safe.
 | Week template / Day template | Text of new notes; see the placeholders below. |
 | Starter template | Pick Minimal, Journal or Reflection and **Load** it to replace the week template (after a confirmation), in the plugin's current language. |
 | Circle property | The frontmatter property new notes keep their circle in: `circle` (default), `square` (drawn as a square) or **Custom…**, a name of your own (drawn as a circle). `{{circle}}` or `{{square}}` in a template picks the property for notes from that template. |
+| Week property | On by default: new notes also get `week: "34.28"` (week `34` of personal year `28`; a note covering several weeks `"03-05.28"`; a day note the week the day falls in), so the week is visible even where the file name is not. The command **Move circle markers into properties** adds it to existing notes too. |
 | Circles | **Restore defaults** brings back the seven default circles in one click. The list of circles, previewed in your cell shape. Each is a name plus a color, or an image. Rename, recolor, reorder (the first one is preselected for new notes) or delete them; **Replace image** uploads a new picture under the same file name, so existing notes keep working. A colour circle can become an image circle (upload or pick a picture) and back again; notes that already use it follow along and show its new look. **Add a circle**: pick a color, or upload an image (shrunk to a small PNG and saved to your attachments folder) or choose a PNG/JPG already in your vault. |
 | Separate circles for days | Off by default. When on, a second circle list (**Day circles**, edited the same way) is used by day notes, the day grid and the new-day dialog; week notes keep the circles above. The day list starts as a copy of your circles at the time of the upgrade (the seven defaults on a new install), so day notes you already have keep their circles. Markers of both lists are coloured inside notes. |
 | Immich | Optional photo picker, see below. |

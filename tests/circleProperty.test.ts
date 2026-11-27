@@ -131,11 +131,11 @@ describe('writing the circle into new notes', () => {
   const week = (templateRaw = '{{ww}}.{{yy}} {{circle}} {{date}}\nbody', circleProperty = 'circle', square = 'work.png') =>
     buildWeekNote({
       ww: '04', yy: '25', square, dates, formatDate: fmt, photoNames: [], templateRaw,
-      settings: { ...DEFAULT_SETTINGS, circleProperty },
+      settings: { ...DEFAULT_SETTINGS, weekProperty: false, circleProperty },
     });
   const day = (templateRaw: string, circleProperty = 'circle') => renderDayTemplate({
     templateRaw, day: d0, today: d0, square: 'work.png', formatDate: fmt,
-    settings: { ...DEFAULT_SETTINGS, circleProperty },
+    settings: { ...DEFAULT_SETTINGS, weekProperty: false, circleProperty },
   });
   it('frontmatter only; {{circle}} renders empty', () => {
     expect(week()).toBe('---\ncircle: work\n---\n04.25 30.04.2025\nbody');
@@ -250,22 +250,22 @@ describe('planCircleMigration', () => {
 
   it('plans values for notes without a property and strip-only items for notes that have one', () => {
     expect(plan.items).toEqual([
-      { path: 'W/28/07.28.md', kind: 'week', values: ['work'], markerLine: 0 },
-      { path: 'W/24/04.24.md', kind: 'week', values: ['work', 'rest'], markerLine: 1 },
-      { path: 'W/28/08.28.md', kind: 'week', values: [], markerLine: 3 },
-      { path: 'D/01.28/2026-04-30.md', kind: 'day', values: ['flag-uk'], markerLine: 3 },
-      { path: 'D/01.28/2026-05-01.md', kind: 'day', values: [], markerLine: 3 },
+      { path: 'W/28/07.28.md', kind: 'week', values: ['work'], markerLine: 0, week: null },
+      { path: 'W/24/04.24.md', kind: 'week', values: ['work', 'rest'], markerLine: 1, week: null },
+      { path: 'W/28/08.28.md', kind: 'week', values: [], markerLine: 3, week: null },
+      { path: 'D/01.28/2026-04-30.md', kind: 'day', values: ['flag-uk'], markerLine: 3, week: null },
+      { path: 'D/01.28/2026-05-01.md', kind: 'day', values: [], markerLine: 3, week: null },
     ]);
   });
   it('counts: hasProperty is only notes with a property and no marker', () => {
-    expect(plan.counts).toEqual({ week: 2, day: 1, stripOnly: 2, hasProperty: 1, unknown: 1 });
+    expect(plan.counts).toEqual({ week: 2, day: 1, stripOnly: 2, hasProperty: 1, unknown: 1, weekProperty: 0 });
   });
   it('any of the names counts as the property', () => {
     const only = planCircleMigration([notes[7]], squares, ['circle']);
     expect(only.counts.hasProperty).toBe(0);
     const s = planCircleMigration(
       [{ path: 'W/x.md', kind: 'week', text: '---\nsquare: rest\n---\n12.28 `sq:work.png`' }], squares, names);
-    expect(s.items).toEqual([{ path: 'W/x.md', kind: 'week', values: [], markerLine: 3 }]);
+    expect(s.items).toEqual([{ path: 'W/x.md', kind: 'week', values: [], markerLine: 3, week: null }]);
     expect(s.counts.stripOnly).toBe(1);
   });
   it('is idempotent: applying the plan leaves nothing to do', () => {
@@ -277,7 +277,7 @@ describe('planCircleMigration', () => {
     });
     const again = planCircleMigration(after, squares, names);
     expect(again.items).toEqual([]);
-    expect(again.counts).toEqual({ week: 0, day: 0, stripOnly: 0, hasProperty: 6, unknown: 1 });
+    expect(again.counts).toEqual({ week: 0, day: 0, stripOnly: 0, hasProperty: 6, unknown: 1, weekProperty: 0 });
     expect(after[1].text).toBe('---\ncircle:\n  - work\n  - rest\n---\n# 4-5.24');
     expect(after[2].text).toBe('---\ncircle: rest\n---\n08.28');
   });

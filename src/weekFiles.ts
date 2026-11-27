@@ -1,6 +1,6 @@
 // Week-file parsing helpers.
 
-import { pad2 } from "./calendar";
+import { pad2, weekOfDoy } from "./calendar";
 import { squareClass } from "./squares";
 import { propertyCircles, type CircleProperty } from "./circleProperty";
 
@@ -48,6 +48,35 @@ export function firstSquares(lines: string[], start: number, squareKeys: string[
   return [];
 }
 
+/** The weeks a multi-week note covers, from a `03-05.28` in its first lines (its own year only). */
+export function headerSpan(lines: string[], start: number, ownYY: number | undefined): { startWW: number; endWW: number } | null {
+  const header = lines.slice(start, start + 3).join("\n");
+  const m = header.match(/\b(\d{1,2})(?:-\d{1,2})*-(\d{1,2})\.(\d{2,3})\b/);
+  // A span's year must be the file's own year; otherwise it's a DD-DD.MM date range.
+  if (!m || parseInt(m[3], 10) !== ownYY) return null;
+  return { startWW: parseInt(m[1], 10), endWW: parseInt(m[2], 10) };
+}
+
+/** Name of the property that shows which personal week a note belongs to. */
+export const WEEK_PROPERTY = "week";
+
+/**
+ * The `week` property of a week note: `WW.YY` from its file name, or `SS-EE.YY` for a
+ * note covering several weeks. Null when the file name is not a week note's.
+ */
+export function weekNoteWeek(fileName: string, text: string): string | null {
+  const p = parseWeekFilename(fileName);
+  if (!p) return null;
+  const lines = text.split(/\r?\n/);
+  const span = headerSpan(lines, contentStart(lines), p.yy);
+  return span ? `${pad2(span.startWW)}-${pad2(span.endWW)}.${pad2(p.yy)}` : `${pad2(p.ww)}.${pad2(p.yy)}`;
+}
+
+/** The `week` property of a day note: the personal week the day falls in (`WW.YY`). */
+export function dayNoteWeek(personal: { yy: number; doy: number }): string {
+  return `${pad2(weekOfDoy(personal.doy))}.${pad2(personal.yy)}`;
+}
+
 export async function readWeekData<F extends { name: string }>(
   read: Reader<F>,
   file: F,
@@ -60,16 +89,6 @@ export async function readWeekData<F extends { name: string }>(
   // The circle property (one value per week the note covers) wins over inline markers.
   const squares = (prop && propertyCircles(content, prop)) || firstSquares(lines, start, squareKeys);
 
-  let startWW: number | null = null;
-  let endWW: number | null = null;
-  const header = lines.slice(start, start + 3).join("\n");
-  const spanM = header.match(/\b(\d{1,2})(?:-\d{1,2})*-(\d{1,2})\.(\d{2,3})\b/);
-  // A span's year must be the file's own year; otherwise it's a DD-DD.MM date range.
-  const ownYY = parseWeekFilename(file.name)?.yy;
-  if (spanM && parseInt(spanM[3], 10) === ownYY) {
-    startWW = parseInt(spanM[1], 10);
-    endWW = parseInt(spanM[2], 10);
-  }
-
-  return { squares, startWW, endWW };
+  const span = headerSpan(lines, start, parseWeekFilename(file.name)?.yy);
+  return { squares, startWW: span?.startWW ?? null, endWW: span?.endWW ?? null };
 }

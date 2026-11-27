@@ -101,12 +101,12 @@ describe('the one-time {{date}} rewrite with mixed plugin versions', () => {
 
 describe('empty {{circle}} placeholders', () => {
   it('drops the space before an empty {{circle}} at the end of a line', () => {
-    const settings: Settings = { ...DEFAULT_SETTINGS, dayTemplate: '# {{date}} · {{weekday}} {{circle}}\nnext {{circle}}  \nx' };
+    const settings: Settings = { ...DEFAULT_SETTINGS, weekProperty: false, dayTemplate: '# {{date}} · {{weekday}} {{circle}}\nnext {{circle}}  \nx' };
     const out = renderDayTemplate({ day: day(2026, 11, 18), today: day(2026, 11, 18), formatDate: fmt, square: 'rest.png', settings, templateRaw: null });
     expect(out).toBe('---\ncircle: rest\n---\n# 18.11.2026 · Wednesday\nnext\nx');
   });
   it('still drops one space after {{circle}} in the middle of a line', () => {
-    const settings: Settings = { ...DEFAULT_SETTINGS, weekTemplate: '{{ww}}.{{yy}} {{circle}} {{date}}' };
+    const settings: Settings = { ...DEFAULT_SETTINGS, weekProperty: false, weekTemplate: '{{ww}}.{{yy}} {{circle}} {{date}}' };
     const dates = { weekStart: day(2026, 11, 18), weekEnd: day(2026, 11, 24), today: day(2026, 11, 18) };
     expect(buildWeekNote({ ww: '07', yy: '28', square: 'work.png', photoNames: [], dates, formatDate: fmt, settings }))
       .toBe('---\ncircle: work\n---\n07.28 18.11.2026');
@@ -127,6 +127,6 @@ describe('circle migration with an unknown span marker', () => {
       path: 'W/01/01.01.md', kind: 'week',
       text: '01-02.31 <span class="sq sq-work"></span><span class="sq sq-rest"></span>',
     }], DEFAULT_SQUARES, ['circle']);
-    expect(plan.items).toEqual([{ path: 'W/01/01.01.md', kind: 'week', values: ['work', 'rest'], markerLine: 0 }]);
+    expect(plan.items).toEqual([{ path: 'W/01/01.01.md', kind: 'week', values: ['work', 'rest'], markerLine: 0, week: null }]);
   });
 });

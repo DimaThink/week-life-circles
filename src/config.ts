@@ -65,6 +65,8 @@ export interface Settings {
   /** Day notes, the day grid and the day dialog use `daySquares` instead of `squares`. */
   daySquaresEnabled: boolean;
   daySquares: SquareDef[];
+  /** New notes get a `week: "WW.YY"` property (the personal week; day notes: the week of the day). */
+  weekProperty: boolean;
   /**
    * Frontmatter property new notes write the circle to (a list for a note covering several
    * weeks). `square` draws squares, any other name circles; `circle` and `square` are always read.
@@ -141,6 +143,7 @@ export const DEFAULT_SETTINGS: Settings = {
   daySquaresEnabled: false,
   daySquares: DEFAULT_SQUARES.map(q => ({ ...q })),
   circleProperty: DEFAULT_CIRCLE_PROPERTY,
+  weekProperty: true,
   immichEnabled: false,
   immichUrl: '',
   immichApiKey: '',
@@ -248,6 +251,7 @@ export function normalizeSettings(s: Partial<Settings> | null | undefined): Sett
     // so turning the day set on keeps existing day notes recognised
     daySquares: Array.isArray(src.daySquares) ? normalizeSquares(src.daySquares) : squares.map(q => ({ ...q })),
     circleProperty: cleanPropertyName(src.circleProperty),
+    weekProperty: typeof src.weekProperty === 'boolean' ? src.weekProperty : d.weekProperty,
     immichEnabled: typeof src.immichEnabled === 'boolean' ? src.immichEnabled : d.immichEnabled,
     immichUrl: str('immichUrl').trim().replace(/\/+$/, ''),
     immichApiKey: str('immichApiKey'),

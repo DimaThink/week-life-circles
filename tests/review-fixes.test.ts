@@ -40,7 +40,7 @@ describe('week note without photos', () => {
     expect(note(['07.28.jpg', '07_2.28.mp4'])).toContain('# Photos\n\n![[07.28.jpg|600]]\n![[07_2.28.mp4]]\n\n# Days');
   });
   it('still fills an inline {{photos}} token', () => {
-    const settings = { ...DEFAULT_SETTINGS, weekTemplate: 'p: {{photos}}!' };
+    const settings = { ...DEFAULT_SETTINGS, weekProperty: false, weekTemplate: 'p: {{photos}}!' };
     expect(buildWeekNote({ ww: '01', yy: '28', square: 'work.png', dates, formatDate: ymd, photoNames: [], settings })).toBe('---\ncircle: work\n---\np: !');
   });
 });

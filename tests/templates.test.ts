@@ -20,7 +20,7 @@ describe('buildWeekNote', () => {
     photoNames: ['04.25.jpg', 'clip.mp4'], settings: SETTINGS,
   });
   it('starts with the circle property, then the header', () => {
-    expect(out.startsWith('---\ncircle: work\n---\n')).toBe(true);
+    expect(out.startsWith('---\nweek: "04.25"\ncircle: work\n---\n')).toBe(true);
     expect(body(out).split('\n')[0]).toBe('30.04.2025 – 06.05.2025');
   });
   it('headers, photos, no leftover tokens', () => {
@@ -54,12 +54,12 @@ describe('week template path', () => {
   const base = { ww: '07', yy: '28', square: 'work.png', dates, formatDate, photoNames: ['07.28.jpg'] };
   it('a template note replaces the built-in week template, same placeholders', () => {
     const out = buildWeekNote({ ...base, settings: SETTINGS, templateRaw: '{{ww}}.{{yy}} {{square}}\n{{photos}}\nend' });
-    expect(out).toBe('---\nsquare: work\n---\n07.28\n![[07.28.jpg|600]]\nend');
+    expect(out).toBe('---\nweek: "07.28"\nsquare: work\n---\n07.28\n![[07.28.jpg|600]]\nend');
   });
   it('no template note → the settings text', () => {
     const settings = { ...SETTINGS, weekTemplate: 'W {{ww}}' };
     expect(body(buildWeekNote({ ...base, settings, templateRaw: null }))).toBe('W 07');
-    expect(buildWeekNote({ ...base, settings })).toBe('---\ncircle: work\n---\nW 07');
+    expect(buildWeekNote({ ...base, settings })).toBe('---\nweek: "07.28"\ncircle: work\n---\nW 07');
   });
   it('setting defaults to empty and survives normalization', () => {
     expect(DEFAULT_SETTINGS.weekTemplatePath).toBe('');
@@ -72,9 +72,9 @@ describe('{{circle}} / {{square}} placeholders', () => {
   const o = { ww: '04', yy: '25', square: 'work.png', dates, formatDate, photoNames: [] as string[], settings: SETTINGS };
   const day = { day: d0, today: d0, formatDate, square: 'work.png', settings: SETTINGS };
   it('week template: both render as nothing; they only pick the property', () => {
-    expect(buildWeekNote({ ...o, templateRaw: 'x {{circle}} y' })).toBe('---\ncircle: work\n---\nx y');
-    expect(buildWeekNote({ ...o, templateRaw: 'x {{square}} y' })).toBe('---\nsquare: work\n---\nx y');
-    expect(buildWeekNote({ ...o, templateRaw: '{{square}} x\ny {{square}}' })).toBe('---\nsquare: work\n---\nx\ny');
+    expect(buildWeekNote({ ...o, templateRaw: 'x {{circle}} y' })).toBe('---\nweek: "04.25"\ncircle: work\n---\nx y');
+    expect(buildWeekNote({ ...o, templateRaw: 'x {{square}} y' })).toBe('---\nweek: "04.25"\nsquare: work\n---\nx y');
+    expect(buildWeekNote({ ...o, templateRaw: '{{square}} x\ny {{square}}' })).toBe('---\nweek: "04.25"\nsquare: work\n---\nx\ny');
   });
   it('day template: the same', () => {
     expect(renderDayTemplate({ ...day, templateRaw: '# {{circle}}' })).toBe('---\ncircle: work\n---\n#');

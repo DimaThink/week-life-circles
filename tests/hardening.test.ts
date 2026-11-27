@@ -46,7 +46,7 @@ describe('normalizeSettings hardening', () => {
 
 describe('buildWeekNote substitution', () => {
   it('keeps `$` patterns in substituted values literal and matches extensions case-insensitively', () => {
-    const settings = { ...DEFAULT_SETTINGS, weekTemplate: '{{date}}|{{photos}}' };
+    const settings = { ...DEFAULT_SETTINGS, weekProperty: false, weekTemplate: '{{date}}|{{photos}}' };
     const d = new Date(2026, 0, 1);
     const out = buildWeekNote({ ww: '01', yy: '28', square: 'work.png', photoNames: ['a.JPG', 'b.mp4'], settings,
       dates: { weekStart: d, weekEnd: d, today: d }, formatDate: () => "$&$1$'" });
