@@ -1,5 +1,5 @@
 import type { Lang } from './i18n';
-import type { DayLayout } from './notePaths';
+import { defaultAttachmentFolder, type DayLayout } from './notePaths';
 import { starterDayTemplate, starterWeekTemplate } from './i18n/strings/templates';
 
 /**
@@ -20,23 +20,14 @@ export type CellMap = Record<string, Record<string, Cell>>;
  */
 export type CellShape = 'circle' | 'square' | 'dots';
 
-/** How the marker at the top of a note is drawn: round, or a rounded square. */
-export type NoteShape = 'circle' | 'square';
-
 /** Where each grid year starts: on the birthday, on 1 January, or on a day of your choice. */
 export type YearStart = 'birthday' | 'january' | 'custom';
 
 /**
- * How a note records its circle: an inline marker at the top (span/embed), a frontmatter
- * property (`circle: work`), or both.
+ * Where uploaded photos of a week go: a folder of your own (`attachmentFolder`, `{{yy}}` and
+ * `{{ww}}` filled in), or wherever Obsidian's "Default location for new attachments" says.
  */
-export type MarkerStyle = 'inline' | 'property' | 'both';
-
-/**
- * Where uploaded photos of a week go: `<weekFolder>/Attachments/YY/` (week-folder), or
- * wherever Obsidian's own "Default location for new attachments" says (obsidian).
- */
-export type AttachmentLocation = 'week-folder' | 'obsidian';
+export type AttachmentLocation = 'folder' | 'obsidian';
 
 export type { DayLayout };
 
@@ -56,6 +47,8 @@ export interface Settings {
   /** Where new day notes go inside dayFolder (existing notes are found in any layout). */
   dayLayout: DayLayout;
   attachmentLocation: AttachmentLocation;
+  /** Folder of the `folder` attachment location; may use {{yy}} and {{ww}}. */
+  attachmentFolder: string;
   /** Display width of embedded images in px; 0 = no width. */
   photoWidth: number;
   /** Vault folder whose photos/videos the week dialog offers ('' = off). */
@@ -66,26 +59,22 @@ export interface Settings {
   dayTemplatePath: string; // "" = use built-in day template
   weekTemplate: string;
   dayTemplate: string;
-  /**
-   * Template FILES behave as before 1.10: a day file gets the old Templater handling and
-   * `{{date}}` = YYYY-MM-DD; `{{date}}` in a week file is the creation date.
-   */
-  legacyTemplates: boolean;
   /** moment.js format of every date written into notes (day FILE names stay YYYY-MM-DD). */
   dateFormat: string;
   squares: SquareDef[];
   /** Day notes, the day grid and the day dialog use `daySquares` instead of `squares`. */
   daySquaresEnabled: boolean;
   daySquares: SquareDef[];
-  markerStyle: MarkerStyle;
-  /** Frontmatter property that holds the circle (a list for a note covering several weeks). */
+  /**
+   * Frontmatter property new notes write the circle to (a list for a note covering several
+   * weeks). `square` draws squares, any other name circles; `circle` and `square` are always read.
+   */
   circleProperty: string;
   immichEnabled: boolean;
   immichUrl: string;
   immichApiKey: string;
   immichPageSize: number;
   cellShape: CellShape;
-  noteShape: NoteShape; // how a circle is drawn inside a note
 }
 
 /** The circles a fresh install starts with: seven generic kinds of week (the palette from week.dth.ink). */
@@ -103,7 +92,7 @@ export const DEFAULT_SQUARES: SquareDef[] = [
  * Template placeholders (see templates.ts):
  *   {{ww}}       personal week number 01-52, zero-padded (e.g. 07)
  *   {{yy}}       two-digit year (e.g. 26)
- *   {{circle}}   embed/marker of the week's circle ({{square}} still works)
+ *   {{circle}} / {{square}}  write nothing; they pick the property (`circle` / `square`) new notes get
  *   {{date}}     first day of the week (week notes) / the day (day notes)
  *   {{today}}    the day the note is created
  *   {{weekEnd}}  last day of the week (week notes)
@@ -138,6 +127,7 @@ export const DEFAULT_SETTINGS: Settings = {
   dayFolder: 'Week day status',
   dayLayout: 'flat',
   attachmentLocation: 'obsidian',
+  attachmentFolder: defaultAttachmentFolder('Week life calendar'),
   photoWidth: 600,
   vaultPhotoFolder: '',
   showMobileButton: true,
@@ -146,12 +136,10 @@ export const DEFAULT_SETTINGS: Settings = {
   dayTemplatePath: '',
   weekTemplate: DEFAULT_WEEK_TEMPLATE,
   dayTemplate: DEFAULT_DAY_TEMPLATE,
-  legacyTemplates: false,
   dateFormat: DEFAULT_DATE_FORMAT,
   squares: DEFAULT_SQUARES.map(q => ({ ...q })),
   daySquaresEnabled: false,
   daySquares: DEFAULT_SQUARES.map(q => ({ ...q })),
-  markerStyle: 'property',
   circleProperty: DEFAULT_CIRCLE_PROPERTY,
   immichEnabled: false,
   immichUrl: '',
@@ -159,7 +147,6 @@ export const DEFAULT_SETTINGS: Settings = {
   immichPageSize: 500,
   language: 'auto',
   cellShape: 'circle',
-  noteShape: 'circle',
 };
 
 const MAX_AGE = 150;
@@ -223,6 +210,7 @@ export function normalizeSettings(s: Partial<Settings> | null | undefined): Sett
   // notes and YYYY-MM-DD in day notes. Rewrite once so new notes look as before.
   const legacyDates = 'startAge' in src && !('dateFormat' in src);
   const squares = normalizeSquares(src.squares);
+  const weekFolder = folder('weekFolder');
   const weekTemplate = legacyDates ? legacyWeekTemplate(str('weekTemplate')) : str('weekTemplate');
   const dayTemplate = legacyDates ? legacyDayTemplate(str('dayTemplate')) : str('dayTemplate');
   return {
@@ -234,14 +222,17 @@ export function normalizeSettings(s: Partial<Settings> | null | undefined): Sett
       : !('startAge' in src), // settings saved before this option keep their start age
     startAge,
     endAge: Math.min(Math.max(num('endAge'), startAge + 1), MAX_AGE),
-    weekFolder: folder('weekFolder'),
+    weekFolder,
     dayFolder: folder('dayFolder'),
     dayLayout: src.dayLayout === 'week' || src.dayLayout === 'flat' || src.dayLayout === 'month'
       ? src.dayLayout
       : (legacy ? 'week' : d.dayLayout),
-    attachmentLocation: src.attachmentLocation === 'week-folder' || src.attachmentLocation === 'obsidian'
-      ? src.attachmentLocation
-      : (legacy ? 'week-folder' : d.attachmentLocation),
+    // 'week-folder' (before 1.12) is the folder location with its old folder
+    attachmentLocation: src.attachmentLocation === 'obsidian' ? 'obsidian'
+      : src.attachmentLocation === 'folder' || src.attachmentLocation === 'week-folder' || legacy ? 'folder'
+        : d.attachmentLocation,
+    attachmentFolder: (typeof src.attachmentFolder === 'string' ? src.attachmentFolder : '').trim().replace(/^\/+|\/+$/g, '')
+      || defaultAttachmentFolder(weekFolder),
     photoWidth: photoWidth >= 0 ? Math.min(photoWidth, MAX_PHOTO_WIDTH) : d.photoWidth,
     vaultPhotoFolder: str('vaultPhotoFolder').trim().replace(/^\/+|\/+$/g, ''),
     showMobileButton: typeof src.showMobileButton === 'boolean' ? src.showMobileButton : d.showMobileButton,
@@ -250,16 +241,12 @@ export function normalizeSettings(s: Partial<Settings> | null | undefined): Sett
     dayTemplatePath: str('dayTemplatePath'),
     weekTemplate,
     dayTemplate,
-    legacyTemplates: typeof src.legacyTemplates === 'boolean' ? src.legacyTemplates : legacy,
     dateFormat: str('dateFormat').trim() || d.dateFormat,
     squares,
     daySquaresEnabled: typeof src.daySquaresEnabled === 'boolean' ? src.daySquaresEnabled : d.daySquaresEnabled,
     // no saved day set yet: start from a copy of the week circles (the seven defaults on a fresh install),
     // so turning the day set on keeps existing day notes recognised
     daySquares: Array.isArray(src.daySquares) ? normalizeSquares(src.daySquares) : squares.map(q => ({ ...q })),
-    markerStyle: src.markerStyle === 'inline' || src.markerStyle === 'property' || src.markerStyle === 'both'
-      ? src.markerStyle
-      : ('startAge' in src ? 'inline' : d.markerStyle), // settings saved before this option keep inline markers only
     circleProperty: cleanPropertyName(src.circleProperty),
     immichEnabled: typeof src.immichEnabled === 'boolean' ? src.immichEnabled : d.immichEnabled,
     immichUrl: str('immichUrl').trim().replace(/\/+$/, ''),
@@ -267,9 +254,6 @@ export function normalizeSettings(s: Partial<Settings> | null | undefined): Sett
     immichPageSize: pageSize >= 1 ? Math.min(pageSize, MAX_IMMICH_PAGE) : d.immichPageSize,
     language: src.language === 'en' || src.language === 'uk' || src.language === 'pl' ? src.language : 'auto',
     cellShape: src.cellShape === 'square' || src.cellShape === 'dots' ? src.cellShape : 'circle',
-    noteShape: src.noteShape === 'circle' || src.noteShape === 'square'
-      ? src.noteShape
-      : ('startAge' in src ? 'square' : 'circle'), // settings saved before this option keep the old look
   };
 }
 

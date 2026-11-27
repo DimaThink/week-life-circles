@@ -48,11 +48,11 @@ Prefer a calendar-style grid? **Year starts** lets each year begin on your birth
 - **One-click notes** — clicking an empty circle opens a dialog: pick the circle,
   optionally attach photos or videos (uploaded, or picked from a photo folder in your vault
   by the week's dates), and the note is created from your template.
-- **Circle as a property** — new notes record their circle as a frontmatter property
-  (`circle: work`) and keep no HTML in the text; the plugin draws the circle at the top of
-  the note by itself, in reading view, live preview and source mode. Bases, Dataview and
-  search can use the property. The command **Add circle properties to existing notes**
-  adds it to older notes (after a dry run).
+- **Circle as a property** — a note keeps its circle in a frontmatter property
+  (`circle: work`, or `square: work` to draw a square) and no HTML in its text; the plugin
+  draws it next to the note title by itself. Bases, Dataview and search can use the
+  property. The command **Move circle markers into properties** converts older notes
+  (after a dry run).
 - **Multi-week notes** — one note can cover several weeks (`03-05.28` in its
   first lines, with one circle per week).
 - **Templates** — the week and day note templates are plain text in the settings,
@@ -83,47 +83,48 @@ Prefer a calendar-style grid? **Year starts** lets each year begin on your birth
 | What | Path (defaults) |
 | --- | --- |
 | Week note | `Week life calendar/28/07.28.md` (week `07` of personal year `28`) |
-| Week attachments | Obsidian's attachment location (**Settings → Files and links**), named `07.28.jpg`, `07_2.28.jpg`, …; or `Week life calendar/Attachments/28/07.28.jpg` with **Photo location → Week folder** |
+| Week attachments | Obsidian's attachment location (**Settings → Files and links**), named `07.28.jpg`, `07_2.28.jpg`, …; or a folder of your own with **Photo location → Own folder**, e.g. `Photos/{{yy}}` → `Photos/28/07.28.jpg` |
 | Day note | `Week day status/2026-11-18.md`; with **Day note layout** also `Week day status/07.28/2026-11-18.md` (per week) or `Week day status/2026/11/2026-11-18.md` (per month) |
 
-Installs from 1.9 or earlier keep the per-week day folders and the `Attachments/YY` photo
-folder. Day notes are found anywhere inside the day folder, so a layout change never hides
+Installs from 1.9 or earlier keep the per-week day folders and photos in
+`<week folder>/Attachments/{{yy}}`. Day notes are found anywhere inside the day folder, so a layout change never hides
 older notes, and the day folder can be the core **Daily notes** folder.
 
-The circle is read from the note's frontmatter property first (`circle` by default):
+### The circle of a note
+
+A note keeps its circle in a frontmatter property:
 
 - one circle: `circle: work`
 - a note covering several weeks, one circle per week in order: `circle: [work, trip]`, or
   the block list Obsidian writes (`circle:` followed by `  - work` and `  - trip` lines)
+- `square: work` instead of `circle: work` draws a square instead of a circle
 
 A value names a circle by its key base name (`work` for `work.png`), its full key, or its
-display name, ignoring case; values that match no circle are ignored. Without a matching
-property, the circle is read from the first lines of the note — a line such as
-`07.28 <span class="sq sq-work"></span> 18.11.2026`. Image circles are written as
-an embed: `![[england.png|14]]`.
+display name, ignoring case; values that match no circle are ignored. The property new
+notes get is set in **Circle property** (`circle`, `square` or a name of your own, which
+draws circles); `circle` and `square` are always read. Notes written by older versions may
+instead have a marker in their first lines (`07.28 <span class="sq sq-work"></span> 18.11.2026`,
+or an embed such as `![[england.png|14]]`); the grid still reads it.
 
-### The circle drawn from the property
+The plugin draws the circle next to the note name at the top of the note (Obsidian's
+*inline title*), in reading view, live preview and source mode: `● 07.28`. It is painted
+beside the title, so the file name is never changed. A note covering several weeks shows one
+circle per week, in order; a day note shows its first circle. With the inline title turned
+off (**Settings → Appearance → Show inline title**), the circle is drawn after the first word
+of the first line below the frontmatter instead (at the end of the line when it is a
+heading). It uses the circle's colour or image with the same contrast ring as the grid,
+follows changes to the property and to your circles at once, is not part of the note text
+and does nothing when clicked. It is drawn only for notes in the week and day folders named
+`WW.YY.md` or `YYYY-MM-DD.md`, and never for a note whose first lines still have a marker in
+the text, so a note never shows its circle twice.
 
-A week or day note whose property names a circle shows that circle at the top of the note
-without any markup in the note: it is drawn after the first word of the first line below
-the frontmatter, so `06.28 04.06.2026` reads as `06.28 ● 04.06.2026`. A note covering
-several weeks (`03-05.28 …` with a list property) shows one circle per list item, in order.
-When that first line is a heading (`# …`), the circle goes at the end of the heading. A
-day note shows its first circle.
-
-The drawn circle uses the circle's colour or image, the same size, shape and contrast ring
-as markers in the text, and follows changes to the property and to your circles at once. It
-is not part of the note text: it cannot be selected, copied or edited, and clicking it does
-nothing. It is drawn only for notes in the week and day folders whose names match `WW.YY.md`
-or `YYYY-MM-DD.md`, and never for a note whose first lines already have a marker in the text
-(a `<span class="sq …">`, a `` `sq:…` `` marker or a small circle image embed), so a note
-never shows its circle twice. Values that name no circle draw nothing.
-
-**Add circle properties to existing notes** (command palette) scans the week and day
-folders, shows how many notes have a marker but no property plus five examples, and only
-after you confirm adds the property (via Obsidian's frontmatter API). The markers in the
-text are kept. Notes that already have the property, or whose marker is not one of your
-circles (an old-style embed may be a photo), are left alone; running it again is safe.
+**Move circle markers into properties** (command palette) scans the week and day folders
+and shows what it will do, with five examples; only after you confirm does it add the
+property (via Obsidian's frontmatter API) to every note that has a marker but no property,
+then remove the marker from the text (`07.28 <span …></span> 18.11.2026` becomes
+`07.28 18.11.2026`; a line holding only the marker is removed). Notes whose marker is not
+one of your circles (an old-style embed may be a photo) are left alone; running it again is
+safe.
 
 ## Settings
 
@@ -138,17 +139,14 @@ circles (an old-style embed may be a photo), are left alone; running it again is
 | Floating button on mobile | The round button that opens the grid (default on). |
 | Week folder / Day folder | Where week and day notes are stored. |
 | Day note layout | Where new day notes go inside the day folder: all in the folder (`YYYY-MM-DD.md`, default for new installs), a folder per week (`WW.YY/`, kept by installs from 1.9 or earlier) or per month (`YYYY/MM/`). |
-| Photo location | Where photos uploaded with a new week go: Obsidian's attachment location (default for new installs) or `<week folder>/Attachments/YY/` (kept by installs from 1.9 or earlier). |
+| Photo location | Where photos uploaded with a new week go: Obsidian's attachment location (default for new installs) or **Own folder**, a path of your choice where `{{yy}}` and `{{ww}}` become the personal year and week (e.g. `Photos/{{yy}}`). Installs from 1.9 or earlier use `<week folder>/Attachments/{{yy}}`. |
 | Photo width | Display width of embedded photos, default `600` px; `0` = no width (full size). Videos are embedded without one. |
 | Photo folder in the vault | Off when empty. When set, the new week dialog lists the photos and videos in this folder (and its subfolders) taken that week — the date comes from `YYYY-MM-DD` or `YYYYMMDD` in the file name (e.g. `IMG_20261118_0930.jpg`), else from the file's creation date. Picked files are embedded where they are, not copied. |
-| Week template path / Day template path | Optional path to a note used as the week or day template instead of the built-in one. The same `{{…}}` placeholders work in it (Templater tags are not interpreted by this plugin, except with **Old template compatibility**). |
-| Old template compatibility | Off for new installs, on for installs from 1.9 or earlier (and data moved over from the old week-calendar-sync plugin). When on, template *files* work as before 1.10: in the day template file the Templater tags `<% date %>`, `<% dayUA %>` and the `-1` (yesterday) tag are filled in (as `YYYY-MM-DD` / the weekday), the first `<%* … %>` block is removed, the literal `<span class="sq sq-work"></span>` becomes the chosen circle, and `{{date}}` is written as `YYYY-MM-DD`; in the week template file `{{date}}` is the creation date. Turn it off once your template files use the `{{…}}` placeholders. |
+| Week template path / Day template path | Optional path to a note used as the week or day template instead of the built-in one. The same `{{…}}` placeholders work in it (Templater tags are not interpreted by this plugin). |
 | Date format | How dates are written into new notes, as a [moment.js format](https://momentjs.com/docs/#/displaying/format/) — default `DD.MM.YYYY`. Day note file names always stay `YYYY-MM-DD.md`. |
 | Week template / Day template | Text of new notes; see the placeholders below. |
 | Starter template | Pick Minimal, Journal or Reflection and **Load** it to replace the week template (after a confirmation), in the plugin's current language. |
-| Marker shape in notes | Circle (default for new installs) or rounded square: how the marker at the top of a week/day note is drawn. Colour and image markers always share one size and shape. |
-| Circle in notes | How a new note records its circle. **Property** (default for new installs from 1.11): frontmatter only, no HTML in the note; `{{circle}}` renders empty and the plugin draws the circle at the top of the note (see *The circle drawn from the property*). **Marker in the text**: the span/embed at the top of the note, as in older versions. **Both**: the property and the marker (then only the marker is shown). A saved choice is kept on upgrade; installs from 1.9 or earlier keep the marker in the text. The grid reads either. |
-| Circle property | Name of that frontmatter property, default `circle`. |
+| Circle property | The frontmatter property new notes keep their circle in: `circle` (default), `square` (drawn as a square) or **Custom…**, a name of your own (drawn as a circle). `{{circle}}` or `{{square}}` in a template picks the property for notes from that template. |
 | Circles | **Restore defaults** brings back the seven default circles in one click. The list of circles, previewed in your cell shape. Each is a name plus a color, or an image. Rename, recolor, reorder (the first one is preselected for new notes) or delete them; **Replace image** uploads a new picture under the same file name, so existing notes keep working. A colour circle can become an image circle (upload or pick a picture) and back again; notes that already use it follow along and show its new look. **Add a circle**: pick a color, or upload an image (shrunk to a small PNG and saved to your attachments folder) or choose a PNG/JPG already in your vault. |
 | Separate circles for days | Off by default. When on, a second circle list (**Day circles**, edited the same way) is used by day notes, the day grid and the new-day dialog; week notes keep the circles above. The day list starts as a copy of your circles at the time of the upgrade (the seven defaults on a new install), so day notes you already have keep their circles. Markers of both lists are coloured inside notes. |
 | Immich | Optional photo picker, see below. |
@@ -159,7 +157,7 @@ circles (an old-style embed may be a photo), are left alone; running it again is
 | Placeholder | Week note | Day note |
 | --- | --- | --- |
 | `{{ww}}`, `{{yy}}` | week number (`07`) and personal year (`28`) | — |
-| `{{circle}}` (`{{square}}` still works) | the week's circle (empty when *Circle in notes* is Property) | the day's circle (same) |
+| `{{circle}}`, `{{square}}` | writes nothing; the note gets its circle in the `circle` or `square` property | same |
 | `{{date}}` | first day of the week | the day |
 | `{{weekEnd}}` | last day of the week (week 52 runs up to the next year start) | — |
 | `{{today}}` | the day the note is created | the day the note is created |
@@ -175,8 +173,8 @@ language, or in the plugin's language if you picked one.
 Upgrading from 1.9 or earlier: `{{date}}` used to be the creation date in week notes and
 `YYYY-MM-DD` in day notes. Your saved templates are rewritten once (`{{date}}` → `{{today}}` in
 the week template, → `{{date:YYYY-MM-DD}}` in the day template), so new notes look as before.
-Template *files* are not rewritten; **Old template compatibility** (on for upgraded installs)
-keeps them working as before until you turn it off.
+Template *files* are not rewritten: use the `{{…}}` placeholders in them (Templater tags are
+left as they are).
 
 **Update the plugin on every synced device.** An older version still running on another device
 drops the new settings when it saves, and would write `{{today}}` literally into new notes.

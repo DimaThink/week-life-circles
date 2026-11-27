@@ -4,7 +4,6 @@ import {
 } from '../src/squareEdit';
 import { extractSquares } from '../src/weekFiles';
 import { squareImage } from '../src/squares';
-import { squareMarkup } from '../src/templates';
 import { encodeConfig, normalizeSettings, parseConfigPayload } from '../src/config';
 
 describe('slugify', () => {
@@ -113,19 +112,14 @@ describe('converting a square between colour and image', () => {
     const s = normalizeSettings({ squares: [{ key: 'work.png', name: 'W', color: null, image: 'work-2.png' }] });
     expect(normalizeSettings(parseConfigPayload(encodeConfig(s))).squares[0].image).toBe('work-2.png');
   });
-  it('markup: a converted square keeps writing its class, so every note reads it back the same way', () => {
+  it('a converted square reads back from old notes of both kinds', () => {
     const squares = [
-      { key: 'work.png', name: 'W', color: null, image: 'work-2.png' }, // colour → image
-      { key: 'flag.png', name: 'F', color: '#123456' },                  // image → colour
-      { key: 'trip.png', name: 'T', color: null },                       // plain image square
+      { key: 'work.png', name: 'W', color: null, image: 'work-2.png' }, // colour -> image
+      { key: 'flag.png', name: 'F', color: '#123456' },                  // image -> colour
     ];
-    expect(squareMarkup('work.png', squares)).toBe('<span class="sq sq-work"></span>');
-    expect(squareMarkup('flag.png', squares)).toBe('<span class="sq sq-flag"></span>');
-    expect(squareMarkup('trip.png', squares)).toBe('![[trip.png|14]]');
-    for (const k of ['work.png', 'flag.png', 'trip.png']) {
-      expect(extractSquares(squareMarkup(k, squares), squares.map(q => q.key))).toEqual([k]);
-    }
-    // old notes of the converted squares still read back
-    expect(extractSquares('![[flag.png|14]]', squares.map(q => q.key))).toEqual(['flag.png']);
+    const keys = squares.map(q => q.key);
+    expect(extractSquares('<span class="sq sq-work"></span>', keys)).toEqual(['work.png']);
+    expect(extractSquares('<span class="sq sq-flag"></span>', keys)).toEqual(['flag.png']);
+    expect(extractSquares('![[flag.png|14]]', keys)).toEqual(['flag.png']);
   });
 });

@@ -13,9 +13,9 @@ import { GridHost, HOVER_SOURCE, ICON_CALENDAR, makeIcon } from './grid';
 import { CreateWeekModal } from './modals/createWeekModal';
 import { CreateDayModal, ModalHost } from './modals/createDayModal';
 import { CircleMigrationModal } from './modals/circleMigrationModal';
-import { planCircleMigration, type MigrationNote } from './circleMigration';
-import type { CircleProperty } from './circleProperty';
-import { circleNoteKind, planAutoCircles, planSignature, type AutoCirclePlan } from './autoCircle';
+import { planCircleMigration, stripInlineMarkers, type MigrationNote } from './circleMigration';
+import { circlePropertyNames, type CircleProperty } from './circleProperty';
+import { circleNoteKind, planAutoCircles, planSignature, titleCircleProps, type AutoCirclePlan } from './autoCircle';
 import { AUTO_CIRCLE_CLASS, autoCircleEditorExtension, autoCirclePostProcessor, refreshEditorCircles, type AutoCircleHost } from './autoCircleView';
 import { ImmichClient } from './immich';
 import { WeekLifeCirclesSettingTab } from './settingsTab';
@@ -64,6 +64,17 @@ function isSettingModal(v: unknown): v is SettingModal {
   return typeof o.open === 'function' && typeof o.openTabById === 'function';
 }
 
+/** Class of an inline title that shows circles (drawn by its ::before, see styles.css). */
+const TITLE_CLASS = 'wcg-titled';
+const TITLE_PROPS = ['--wcg-title-bg', '--wcg-title-pos', '--wcg-title-size', '--wcg-title-w'];
+
+function clearTitle(el: HTMLElement): void {
+  if (!el.hasClass(TITLE_CLASS)) return;
+  el.removeClass(TITLE_CLASS);
+  el.removeAttribute('data-wcg-circles');
+  for (const p of TITLE_PROPS) el.style.removeProperty(p);
+}
+
 export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, ModalHost, AutoCircleHost {
   // Replaced once in onload, then only edited in place: immich + the setting tab hold this reference.
   settings: Settings = normalizeSettings(DEFAULT_SETTINGS);
@@ -89,6 +100,8 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
   private unloaded = false;
   /** Bumped on every settings change: circles drawn from the note property are redrawn. */
   autoCircleVersion = 0;
+  /** Last known: does Obsidian show the inline title? */
+  private titleVisible = true;
   /** Circles drawn last for each open note, to re-render reading view only when they change. */
   private readonly autoCircleSigs = new Map<string, string>();
 
@@ -215,7 +228,7 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
     this.unloaded = true;
     this.squareObserver?.disconnect();
     this.squareObserver = null;
-    activeDocument.body.removeClass('wcg-notes-circle');
+    this.clearTitles();
     this.fab?.remove();
     this.fab = null;
     if (this.debounce.has('save')) void this.persist(); // do not lose a pending cache write
@@ -247,35 +260,59 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
       childList: true, subtree: true, attributes: true, attributeFilter: ['class'],
     });
     // Belt and braces: switching notes, panes or reading/editing mode re-colours what is on screen.
-    const recolour = (): void => { this.debounce.run('recolour-squares', 150, () => this.refreshSquares()); };
+    const recolour = (): void => {
+      this.debounce.run('recolour-squares', 150, () => { this.refreshSquares(); this.syncTitles(); });
+    };
     this.registerEvent(this.app.workspace.on('layout-change', recolour));
     this.registerEvent(this.app.workspace.on('active-leaf-change', recolour));
     this.registerEvent(this.app.workspace.on('file-open', recolour));
+    // turning the inline title on or off moves the circle between the title and the first line
+    this.registerEvent(this.app.workspace.on('css-change', () => {
+      this.debounce.run('auto-circles', 300, () => this.refreshAutoCircles());
+    }));
   }
 
   private refreshSquares(): void {
-    activeDocument.body.toggleClass('wcg-notes-circle', this.settings.noteShape === 'circle');
     decorateSquares(activeDocument.body, markerSquares(this.settings), this.squareImageUrl);
   }
 
   // ── Circle drawn from the note property ─────────────────────────────────
 
-  autoCirclePlan(path: string, text: () => string): AutoCirclePlan | null {
+  /** The circles of a week/day note from its property, or null (not such a note, or none to draw). */
+  private notePlan(path: string, text: () => string): AutoCirclePlan | null {
     const kind = circleNoteKind(path, this.settings.weekFolder, this.settings.dayFolder);
     if (!kind) return null;
     try {
-      const plan = planAutoCircles(text(), kind, this.squareSet(kind), this.settings.circleProperty);
-      this.autoCircleSigs.set(path, planSignature(plan));
-      return plan;
+      return planAutoCircles(text(), kind, this.squareSet(kind), circlePropertyNames(this.settings.circleProperty));
     } catch (e) {
       console.error(`week-life-circles: cannot read the circle of ${path}`, e);
       return null;
     }
   }
 
-  renderAutoCircles(keys: string[], atEnd: boolean): HTMLElement {
+  /**
+   * Obsidian shows the note name at the top of notes (Settings → Appearance → Show inline
+   * title): read from an inline title element when one exists, else the last known answer
+   * (the default, on, until a note is open).
+   */
+  private titleShown(): boolean {
+    const el = activeDocument.querySelector('.workspace-leaf .inline-title');
+    if (el) this.titleVisible = getComputedStyle(el).display !== 'none';
+    return this.titleVisible;
+  }
+
+  /** Circles for the note's first line: only when there is no inline title to show them in. */
+  autoCirclePlan(path: string, text: () => string): AutoCirclePlan | null {
+    if (this.titleShown() || !this.isAnyNotePath(path)) return null;
+    const plan = this.notePlan(path, text);
+    this.autoCircleSigs.set(path, planSignature(plan));
+    return plan;
+  }
+
+  renderAutoCircles(keys: string[], atEnd: boolean, shape: AutoCirclePlan['shape']): HTMLElement {
     const squares = markerSquares(this.settings);
-    const wrap = createSpan({ cls: atEnd ? `${AUTO_CIRCLE_CLASS} is-end` : AUTO_CIRCLE_CLASS, attr: { contenteditable: 'false' } });
+    const cls = [AUTO_CIRCLE_CLASS, ...(atEnd ? ['is-end'] : []), ...(shape === 'square' ? ['is-square'] : [])];
+    const wrap = createSpan({ cls: cls.join(' '), attr: { contenteditable: 'false' } });
     const names = keys.map(k => squares.find(q => q.key === k)?.name ?? k);
     wrap.setAttr('aria-label', names.join(', '));
     for (const key of keys) wrap.createSpan({ cls: `sq ${squareClass(key)}` });
@@ -283,8 +320,39 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
     return wrap;
   }
 
+  /** Draw (or clear) the circles in the inline title of every open note; the title text is never touched. */
+  private syncTitles(path?: string): void {
+    const before = this.titleVisible;
+    const show = this.titleShown();
+    // the title appeared or vanished: the first-line circles must follow
+    if (show !== before) { this.refreshAutoCircles(); return; }
+    const squares = markerSquares(this.settings);
+    this.app.workspace.iterateAllLeaves(leaf => {
+      const view = leaf.view;
+      if (!(view instanceof MarkdownView)) return;
+      if (path && view.file?.path !== path) return;
+      const file = view.file;
+      const plan = show && file ? this.notePlan(file.path, () => view.getViewData()) : null;
+      view.containerEl.querySelectorAll<HTMLElement>('.inline-title').forEach(el => {
+        if (!plan) { clearTitle(el); return; }
+        const circles = plan.keys.map(k => {
+          const q = squares.find(s => s.key === k);
+          return { color: q?.color ?? null, url: q && !q.color ? this.squareImageUrl(squareImage(q)) : null };
+        });
+        el.addClass(TITLE_CLASS);
+        el.setAttr('data-wcg-circles', plan.keys.map(k => squares.find(s => s.key === k)?.name ?? k).join(', '));
+        el.setCssProps(titleCircleProps(circles, plan.shape));
+      });
+    });
+  }
+
+  private clearTitles(): void {
+    activeDocument.querySelectorAll<HTMLElement>(`.inline-title.${TITLE_CLASS}`).forEach(clearTitle);
+  }
+
   /** A note's text changed: re-render it in reading view when the circles it shows changed. */
   private onNoteChanged(file: TFile, data: string): void {
+    if (this.isAnyNotePath(file.path)) this.syncTitles(file.path);
     const before = this.autoCircleSigs.get(file.path);
     if (before === undefined) return; // not open, or not a week/day note
     const plan = this.autoCirclePlan(file.path, () => data);
@@ -307,6 +375,7 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
     this.autoCircleSigs.clear();
     refreshEditorCircles();
     this.rerenderReading();
+    this.syncTitles();
   }
 
   private isAnyNotePath(path: string): boolean {
@@ -548,7 +617,7 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
 
   /** Where notes keep their circle as a frontmatter property (read whatever the marker style). */
   private circleProp(kind: Kind): CircleProperty {
-    return { name: this.settings.circleProperty, squares: this.squareSet(kind) };
+    return { names: circlePropertyNames(this.settings.circleProperty), squares: this.squareSet(kind) };
   }
 
   private readFile = (f: TFile): Promise<string> => this.app.vault.cachedRead(f);
@@ -740,6 +809,7 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
   /** Dry run: plan which notes get the circle property, then let the user confirm. */
   private async openCircleMigration(): Promise<void> {
     const property = this.settings.circleProperty;
+    const names = circlePropertyNames(property);
     const files = new Map<string, TFile>();
     const notes = (await mapChunked([...this.noteFiles('week'), ...this.noteFiles('day')], READ_CHUNK, async file => {
       const text = await this.tryRead(file, () => this.readFile(file));
@@ -749,7 +819,7 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
       return note;
     })).filter((n): n is MigrationNote => n !== null);
     const sets = { week: this.settings.squares, day: daySquareSet(this.settings) };
-    const plan = planCircleMigration(notes, sets, property);
+    const plan = planCircleMigration(notes, sets, names);
     if (plan.items.length === 0) {
       new Notice(t('notes.migrate.nothing', { prop: property, has: plan.counts.hasProperty, unknown: plan.counts.unknown }));
       return;
@@ -763,15 +833,23 @@ export default class WeekLifeCirclesPlugin extends Plugin implements GridHost, M
           // The dry run may be minutes old: plan this note again from its current text and
           // leave it alone if it changed meanwhile (other circles, or the property was added).
           const text = await this.app.vault.read(file); // not cachedRead: the text on disk now
-          const now = planCircleMigration([{ path: item.path, kind: item.kind, text }], sets, property).items[0];
+          const replan = (cur: string) => planCircleMigration([{ path: item.path, kind: item.kind, text: cur }], sets, names).items[0];
+          const now = replan(text);
           if (!now || JSON.stringify(now.values) !== JSON.stringify(item.values)) { changed++; continue; }
-          await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
-            if (Object.keys(fm).some(k => k.toLowerCase() === property.toLowerCase())) return; // set meanwhile
-            fm[property] = item.values.length === 1 ? item.values[0] : item.values;
+          // the property first: the marker is only removed once the circle is safe in the frontmatter
+          if (item.values.length > 0) {
+            await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
+              if (Object.keys(fm).some(k => names.some(n => k.toLowerCase() === n.toLowerCase()))) return; // set meanwhile
+              fm[property] = item.values.length === 1 ? item.values[0] : item.values;
+            });
+          }
+          await this.app.vault.process(file, cur => {
+            const p = replan(cur);
+            return p && p.values.length === 0 ? stripInlineMarkers(cur, p.markerLine, sets[item.kind]) : cur;
           });
           written++;
         } catch (e) {
-          console.error(`week-life-circles: cannot add the circle property to ${item.path}`, e);
+          console.error(`week-life-circles: cannot move the circle of ${item.path} into its property`, e);
           failed++;
         }
       }

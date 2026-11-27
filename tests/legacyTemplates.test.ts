@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { DEFAULT_SETTINGS, DEFAULT_SQUARES, freshInstallSettings, normalizeSettings, type Settings } from '../src/config';
+import { DEFAULT_SETTINGS, DEFAULT_SQUARES, normalizeSettings, type Settings } from '../src/config';
 import { buildWeekNote, renderDayTemplate, type DateFormatter } from '../src/templates';
 import { migrate } from '../src/migrate';
 import { planCircleMigration } from '../src/circleMigration';
+import { body } from './noteBody';
 
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const WDL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -19,10 +20,7 @@ const fmt: DateFormatter = (d, f) => f.replace(/YYYY|MM|DD|dddd|ddd/g, tok => {
 });
 const day = (y: number, m: number, d: number): Date => new Date(y, m - 1, d);
 
-const INLINE: Settings = { ...DEFAULT_SETTINGS, markerStyle: 'inline' };
-const LEGACY: Settings = { ...INLINE, legacyTemplates: true };
-
-/** The author's old Templater day template, as the old plugin interpreted it. */
+/** An old Templater day template: the plugin no longer interprets Templater tags. */
 const TEMPLATER_DAY = [
   '<%* const d = tp.date.now() -%>',
   '# <% date %> · <% dayUA %> <span class="sq sq-work"></span>',
@@ -30,64 +28,26 @@ const TEMPLATER_DAY = [
   '{{date}} {{weekday}}',
 ].join('\n');
 
-describe('legacyTemplates setting', () => {
-  it('fresh install: off', () => {
-    expect(DEFAULT_SETTINGS.legacyTemplates).toBe(false);
-    expect(normalizeSettings({}).legacyTemplates).toBe(false);
-    expect(freshInstallSettings('en').legacyTemplates).toBe(false);
-    expect(migrate(null).data.settings.legacyTemplates).toBe(false);
-  });
-  it('settings saved by an older version: on', () => {
-    expect(normalizeSettings({ startAge: 20 }).legacyTemplates).toBe(true);
-  });
-  it('a saved value wins', () => {
-    expect(normalizeSettings({ startAge: 20, legacyTemplates: false }).legacyTemplates).toBe(false);
-    expect(normalizeSettings({ legacyTemplates: true }).legacyTemplates).toBe(true);
-  });
-});
-
-describe('day template FILE with legacyTemplates', () => {
+describe('template files with Templater tags', () => {
   const base = { day: day(2026, 11, 18), today: day(2026, 11, 27), formatDate: fmt, square: 'rest.png' };
 
-  it('on: the old Templater handling, dates as YYYY-MM-DD', () => {
-    expect(renderDayTemplate({ ...base, settings: LEGACY, templateRaw: TEMPLATER_DAY })).toBe([
-      '# 2026-11-18 · Wednesday <span class="sq sq-rest"></span>',
-      'Yesterday: [[2026-11-17]]',
-      '2026-11-18 Wednesday',
-    ].join('\n'));
-  });
-  it('on: an explicit format and the new placeholders still work', () => {
-    expect(renderDayTemplate({ ...base, settings: LEGACY, templateRaw: '{{date:DD/MM}} {{yesterday}} {{today}}' }))
-      .toBe('18/11 17.11.2026 27.11.2026');
-  });
-  it('on: the settings text (no file) is not affected', () => {
-    const settings = { ...LEGACY, dayTemplate: '<% date %> {{date}}' };
-    expect(renderDayTemplate({ ...base, settings, templateRaw: null })).toBe('<% date %> 18.11.2026');
-  });
-  it('off: Templater tags stay, {{date}} uses the date format', () => {
-    expect(renderDayTemplate({ ...base, settings: INLINE, templateRaw: TEMPLATER_DAY })).toBe([
+  it('Templater tags stay as they are, {{date}} uses the date format', () => {
+    const out = renderDayTemplate({ ...base, settings: DEFAULT_SETTINGS, templateRaw: TEMPLATER_DAY });
+    expect(out.startsWith('---\ncircle: rest\n---\n')).toBe(true);
+    expect(body(out)).toBe([
       '<%* const d = tp.date.now() -%>',
       '# <% date %> · <% dayUA %> <span class="sq sq-work"></span>',
       'Yesterday: [[<% tp.date.now("YYYY-MM-DD", -1) %>]]',
       '18.11.2026 Wednesday',
     ].join('\n'));
   });
-});
-
-describe('week template FILE with legacyTemplates', () => {
-  const dates = { weekStart: day(2026, 11, 18), weekEnd: day(2026, 11, 24), today: day(2026, 11, 27) };
-  const base = { ww: '07', yy: '28', square: 'work.png', photoNames: [] as string[], dates, formatDate: fmt };
-
-  it('on: {{date}} in a template file is the creation date', () => {
-    expect(buildWeekNote({ ...base, settings: LEGACY, templateRaw: '{{date}} {{weekEnd}}' }))
-      .toBe('27.11.2026 24.11.2026');
-  });
-  it('on: the settings text keeps {{date}} = first day of the week', () => {
-    const settings = { ...LEGACY, weekTemplate: '{{date}}' };
-    expect(buildWeekNote({ ...base, settings, templateRaw: null })).toBe('18.11.2026');
-  });
-  it('off: {{date}} in a template file is the first day of the week', () => {
-    expect(buildWeekNote({ ...base, settings: INLINE, templateRaw: '{{date}}' })).toBe('18.11.2026');
+  it('legacy settings do not change how a template file is read', () => {
+    const legacy = normalizeSettings({ startAge: 20 });
+    expect(body(renderDayTemplate({ ...base, settings: legacy, templateRaw: TEMPLATER_DAY })))
+      .toBe(body(renderDayTemplate({ ...base, settings: DEFAULT_SETTINGS, templateRaw: TEMPLATER_DAY })));
+    const dates = { weekStart: day(2026, 11, 18), weekEnd: day(2026, 11, 24), today: day(2026, 11, 27) };
+    expect(body(buildWeekNote({ ww: '07', yy: '28', square: 'work.png', photoNames: [], dates, formatDate: fmt,
+      settings: legacy, templateRaw: '{{date}}' }))).toBe('18.11.2026');
   });
 });
 
@@ -97,9 +57,11 @@ describe('data of the old week-calendar-sync plugin', () => {
 
   it('keeps the old behaviour', () => {
     expect(s.dayLayout).toBe('week');
-    expect(s.attachmentLocation).toBe('week-folder');
-    expect(s.markerStyle).toBe('inline');
-    expect(s.legacyTemplates).toBe(true);
+    expect(s.attachmentLocation).toBe('folder');
+    expect(s.attachmentFolder).toBe('Week life calendar/Attachments/{{yy}}');
+    expect(s.squares.map(q => q.key)).toContain('custom-x.png');
+    expect('markerStyle' in s).toBe(false);
+    expect('legacyTemplates' in s).toBe(false);
   });
   it('the day set is a copy of its merged circles', () => {
     expect(s.daySquares).toEqual(s.squares);
@@ -137,14 +99,14 @@ describe('the one-time {{date}} rewrite with mixed plugin versions', () => {
   });
 });
 
-describe('property-only marker style', () => {
+describe('empty {{circle}} placeholders', () => {
   it('drops the space before an empty {{circle}} at the end of a line', () => {
-    const settings: Settings = { ...DEFAULT_SETTINGS, markerStyle: 'property', dayTemplate: '# {{date}} · {{weekday}} {{circle}}\nnext {{circle}}  \nx' };
+    const settings: Settings = { ...DEFAULT_SETTINGS, dayTemplate: '# {{date}} · {{weekday}} {{circle}}\nnext {{circle}}  \nx' };
     const out = renderDayTemplate({ day: day(2026, 11, 18), today: day(2026, 11, 18), formatDate: fmt, square: 'rest.png', settings, templateRaw: null });
     expect(out).toBe('---\ncircle: rest\n---\n# 18.11.2026 · Wednesday\nnext\nx');
   });
   it('still drops one space after {{circle}} in the middle of a line', () => {
-    const settings: Settings = { ...DEFAULT_SETTINGS, markerStyle: 'property', weekTemplate: '{{ww}}.{{yy}} {{circle}} {{date}}' };
+    const settings: Settings = { ...DEFAULT_SETTINGS, weekTemplate: '{{ww}}.{{yy}} {{circle}} {{date}}' };
     const dates = { weekStart: day(2026, 11, 18), weekEnd: day(2026, 11, 24), today: day(2026, 11, 18) };
     expect(buildWeekNote({ ww: '07', yy: '28', square: 'work.png', photoNames: [], dates, formatDate: fmt, settings }))
       .toBe('---\ncircle: work\n---\n07.28 18.11.2026');
@@ -156,7 +118,7 @@ describe('circle migration with an unknown span marker', () => {
     const plan = planCircleMigration([{
       path: 'W/01/01.01.md', kind: 'week',
       text: '01-03.31 <span class="sq sq-work"></span><span class="sq sq-gone"></span><span class="sq sq-rest"></span>',
-    }], DEFAULT_SQUARES, 'circle');
+    }], DEFAULT_SQUARES, ['circle']);
     expect(plan.items).toEqual([]);
     expect(plan.counts.unknown).toBe(1);
   });
@@ -164,7 +126,7 @@ describe('circle migration with an unknown span marker', () => {
     const plan = planCircleMigration([{
       path: 'W/01/01.01.md', kind: 'week',
       text: '01-02.31 <span class="sq sq-work"></span><span class="sq sq-rest"></span>',
-    }], DEFAULT_SQUARES, 'circle');
-    expect(plan.items).toEqual([{ path: 'W/01/01.01.md', kind: 'week', values: ['work', 'rest'] }]);
+    }], DEFAULT_SQUARES, ['circle']);
+    expect(plan.items).toEqual([{ path: 'W/01/01.01.md', kind: 'week', values: ['work', 'rest'], markerLine: 0 }]);
   });
 });

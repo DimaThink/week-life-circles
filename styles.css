@@ -442,10 +442,9 @@
 /* Link text-decoration must beat Obsidian's `a:hover` underline without !important */
 .wcg-cell .wcg-link,
 .wcg-cell .wcg-link:hover { text-decoration: none; }
-/* ── Inline circles inside notes (colour set per element from code via --wcg-sq-color) ──
-   Colour and image markers share one size and shape; `Marker shape in notes` flips the radius. */
-body { --wcg-note-radius: 4px; }
-body.wcg-notes-circle { --wcg-note-radius: 50%; }
+/* ── Circles inside notes (colour set per element from code via --wcg-sq-color) ──
+   Colour and image markers share one size; round, or square when the `square` property holds them. */
+body { --wcg-note-radius: 50%; }
 .sq {
     display: inline-block;
     width: 18px;
@@ -468,6 +467,27 @@ body.wcg-notes-circle { --wcg-note-radius: 50%; }
 }
 .wcg-sq-auto.is-end { margin-right: 0; margin-left: 0.35em; }
 .wcg-sq-auto .sq { margin: 0; cursor: default; }
+.wcg-sq-auto.is-square .sq { border-radius: 3px; }
+/* The circles in the note title: painted by ::before from per-note custom properties
+   (--wcg-title-*, built in autoCircle.ts), so the title text is never touched. */
+.inline-title.wcg-titled {
+    --wcg-ts: 0.62em;
+    --wcg-tg: 0.14em;
+    --wcg-ring: color-mix(in srgb, var(--text-normal) 30%, transparent);
+}
+.inline-title.wcg-titled::before {
+    content: '';
+    display: inline-block;
+    vertical-align: middle;
+    width: var(--wcg-title-w);
+    height: var(--wcg-ts);
+    margin: 0 0.3em 0.12em 0;
+    background-image: var(--wcg-title-bg);
+    background-position: var(--wcg-title-pos);
+    background-size: var(--wcg-title-size);
+    background-repeat: no-repeat;
+    pointer-events: none;
+}
 /* a square the settings do not list: a neutral filled box, never an empty outline */
 .sq.wcg-sq-unknown { background-color: var(--background-modifier-border-hover); }
 body img.wcg-sq-img,

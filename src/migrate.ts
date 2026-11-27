@@ -56,9 +56,7 @@ export function migrate(raw: unknown): { data: SavedData; migrated: boolean; fre
     squares,
     daySquares: squares.map(q => ({ ...q })),
     dayLayout: 'week',
-    attachmentLocation: 'week-folder',
-    markerStyle: 'inline',
-    legacyTemplates: true,
+    attachmentLocation: 'folder',
     weekTemplate: legacyWeekTemplate(base.weekTemplate),
     dayTemplate: legacyDayTemplate(base.dayTemplate),
   };

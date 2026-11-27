@@ -66,12 +66,12 @@ describe('which circle set applies', () => {
 
 describe('day notes with a day set', () => {
   const fmt: DateFormatter = d => d.toISOString().slice(0, 10);
-  it('renders a day-only circle as its marker', () => {
-    const settings = normalizeSettings({ squares: week, daySquares: [{ key: 'gym.png', name: 'Gym', color: null, image: 'barbell.png' }], daySquaresEnabled: true, markerStyle: 'inline' });
+  it('writes a day-only circle into the property', () => {
+    const settings = normalizeSettings({ squares: week, daySquares: [{ key: 'gym.png', name: 'Gym', color: null, image: 'barbell.png' }], daySquaresEnabled: true });
     const out = renderDayTemplate({
       templateRaw: '{{circle}}', day: new Date(2026, 0, 2), today: new Date(2026, 0, 2), square: 'gym.png', settings, formatDate: fmt,
     });
-    expect(out).toBe('<span class="sq sq-gym"></span>');
+    expect(out).toBe('---\ncircle: gym\n---\n');
   });
 });
 
@@ -83,7 +83,7 @@ describe('circle migration with a day set', () => {
       { path: 'D/2026-01-01.md', kind: 'day' as const, text: '`sq:gym.png`' },
       { path: 'D/2026-01-02.md', kind: 'day' as const, text: '`sq:work.png`' },
     ];
-    const plan = planCircleMigration(notes, { week, day }, 'circle');
+    const plan = planCircleMigration(notes, { week, day }, ['circle']);
     expect(plan.items.map(i => i.path)).toEqual(['W/1.md', 'D/2026-01-01.md']);
   });
 });

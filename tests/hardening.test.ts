@@ -1,12 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { DEFAULT_SETTINGS, DEFAULT_SQUARES, normalizeSettings } from '../src/config';
 import { Calendar, formatDMY, pad2, weekOfDoy } from '../src/calendar';
-import { squareMarkup, buildWeekNote } from '../src/templates';
+import { buildWeekNote } from '../src/templates';
+import { body } from './noteBody';
 import { firstSquares, weekNotePath, parseWeekFilename } from '../src/weekFiles';
 import { migrate } from '../src/migrate';
 
-/** Inline markers only (the pre-1.10 output these template tests describe). */
-const INLINE = { ...DEFAULT_SETTINGS, markerStyle: 'inline' as const };
 
 describe('normalizeSettings hardening', () => {
   it('drops null / non-object / keyless elements of a stored squares array', () => {
@@ -45,17 +44,14 @@ describe('normalizeSettings hardening', () => {
   });
 });
 
-describe('squareMarkup', () => {
-  it('does not treat inherited object keys as colour squares', () => {
-    expect(squareMarkup('toString', DEFAULT_SQUARES)).toBe('![[toString|14]]');
-    expect(squareMarkup('constructor', DEFAULT_SQUARES)).toBe('![[constructor|14]]');
-  });
+describe('buildWeekNote substitution', () => {
   it('keeps `$` patterns in substituted values literal and matches extensions case-insensitively', () => {
-    const settings = { ...INLINE, weekTemplate: '{{date}}|{{photos}}' };
+    const settings = { ...DEFAULT_SETTINGS, weekTemplate: '{{date}}|{{photos}}' };
     const d = new Date(2026, 0, 1);
     const out = buildWeekNote({ ww: '01', yy: '28', square: 'work.png', photoNames: ['a.JPG', 'b.mp4'], settings,
       dates: { weekStart: d, weekEnd: d, today: d }, formatDate: () => "$&$1$'" });
-    expect(out).toBe("$&$1$'|![[a.JPG|600]]\n![[b.mp4]]");
+    expect(body(out)).toBe("$&$1$'|![[a.JPG|600]]\n![[b.mp4]]");
+    expect(out.startsWith('---\ncircle: work\n---\n')).toBe(true);
   });
 });
 

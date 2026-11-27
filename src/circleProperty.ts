@@ -112,14 +112,47 @@ export function resolveCircles(values: string[], squares: SquareDef[]): string[]
   return out;
 }
 
-/** Where a note's circle property is read from. */
-export interface CircleProperty { name: string; squares: SquareDef[] }
+/** How a circle is drawn inside a note: decided by the property that holds it. */
+export type MarkerShape = 'circle' | 'square';
+
+/** The `square` property draws squares; `circle` and any other name draw circles. */
+export function shapeOfProperty(name: string): MarkerShape {
+  return name.trim().toLowerCase() === 'square' ? 'square' : 'circle';
+}
+
+/** The property names read for a note's circle: the configured one, then `circle` and `square`. */
+export function circlePropertyNames(configured: string): string[] {
+  const out: string[] = [];
+  for (const n of [configured, 'circle', 'square']) {
+    if (n && !out.some(o => sameName(o, n))) out.push(n);
+  }
+  return out;
+}
+
+/** Where a note's circle property is read from: the names in order, and the circles they may name. */
+export interface CircleProperty { names: string[]; squares: SquareDef[] }
+
+/**
+ * The first of `prop.names` the note has with a value that names a circle: its circles
+ * and its name (which sets the shape). Null when there is none.
+ */
+export function findCircleProperty(text: string, prop: CircleProperty): { keys: string[]; name: string } | null {
+  for (const name of prop.names) {
+    const values = readPropertyValues(text, name);
+    const keys = values ? resolveCircles(values, prop.squares) : [];
+    if (keys.length > 0) return { keys, name };
+  }
+  return null;
+}
+
+/** Does the note have any of `names` as a property (with any value)? */
+export function hasAnyProperty(text: string, names: string[]): boolean {
+  return names.some(n => readPropertyValues(text, n) !== null);
+}
 
 /** The circles named by the note's property, or null when it has none that match a circle. */
 export function propertyCircles(text: string, prop: CircleProperty): string[] | null {
-  const values = readPropertyValues(text, prop.name);
-  const keys = values ? resolveCircles(values, prop.squares) : [];
-  return keys.length > 0 ? keys : null;
+  return findCircleProperty(text, prop)?.keys ?? null;
 }
 
 const YAML_WORDS = /^(true|false|yes|no|on|off|null|y|n)$/i;

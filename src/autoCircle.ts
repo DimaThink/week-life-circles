@@ -3,7 +3,7 @@
 // the circle shown at the top of the note without any HTML in the note itself.
 
 import type { SquareDef } from './config';
-import { readPropertyValues, resolveCircles } from './circleProperty';
+import { findCircleProperty, shapeOfProperty, type MarkerShape } from './circleProperty';
 import { parseDayFilename } from './dayFiles';
 import { squareImage } from './squares';
 import { contentStart, parseWeekFilename } from './weekFiles';
@@ -47,6 +47,8 @@ export interface AutoCirclePlan {
   /** True when nothing follows on the line (a heading, or a one-token line): space goes before the circle. */
   atEnd: boolean;
   keys: string[];
+  /** Set by the property that names the circles (`square` draws squares). */
+  shape: MarkerShape;
 }
 
 /**
@@ -58,14 +60,12 @@ export interface AutoCirclePlan {
  * a circle written into the text (never draw a second one).
  */
 export function planAutoCircles(
-  text: string, kind: NoteKind, squares: SquareDef[], property: string,
+  text: string, kind: NoteKind, squares: SquareDef[], properties: string[],
 ): AutoCirclePlan | null {
-  if (!property) return null;
-  const values = readPropertyValues(text, property);
-  if (!values || values.length === 0) return null;
-  const resolved = resolveCircles(values, squares);
-  const keys = kind === 'day' ? resolved.slice(0, 1) : resolved;
-  if (keys.length === 0) return null;
+  const found = findCircleProperty(text, { names: properties, squares });
+  if (!found) return null;
+  const keys = kind === 'day' ? found.keys.slice(0, 1) : found.keys;
+  const shape = shapeOfProperty(found.name);
 
   const lines = text.split(/\r?\n/);
   const start = contentStart(lines);
@@ -79,15 +79,64 @@ export function planAutoCircles(
   const line = start + offset;
   const raw = lines[line];
   const end = raw.trimEnd().length;
-  if (/^\s{0,3}#{1,6}(\s|$)/.test(raw)) return { line, ch: end, atEnd: true, keys };
+  if (/^\s{0,3}#{1,6}(\s|$)/.test(raw)) return { line, ch: end, atEnd: true, keys, shape };
   const token = /^\s*\S+/.exec(raw);
   const tokenEnd = token ? token[0].length : end;
-  if (tokenEnd >= end) return { line, ch: end, atEnd: true, keys };
+  if (tokenEnd >= end) return { line, ch: end, atEnd: true, keys, shape };
   // after the one space or tab that follows the token, so the circle sits between the words
-  return { line, ch: tokenEnd + 1, atEnd: false, keys };
+  return { line, ch: tokenEnd + 1, atEnd: false, keys, shape };
 }
 
 /** A stable string for a plan, to tell whether the circles of an open note changed. */
 export function planSignature(plan: AutoCirclePlan | null): string {
-  return plan ? `${plan.line}:${plan.ch}:${plan.keys.join(',')}` : '';
+  return plan ? `${plan.line}:${plan.ch}:${plan.shape}:${plan.keys.join(',')}` : '';
+}
+
+/** One circle as the note title shows it: a colour, or a picture URL (both null = not found). */
+export interface TitleCircle { color: string | null; url: string | null }
+
+const NEUTRAL = 'var(--background-modifier-border-hover)';
+const RING = 'var(--wcg-ring)';
+
+/** A colour safe to put inside a CSS gradient (else the neutral fill). */
+function safeColor(c: string | null): string | null {
+  return c && /^[#\w(),.%\s-]+$/.test(c) ? c.trim() : null;
+}
+
+/**
+ * CSS custom properties that draw `circles` side by side as the background of the note
+ * title's ::before (styles.css): one background layer (or two) per circle, so the title
+ * text itself is never touched. Sizes come from --wcg-ts (circle) and --wcg-tg (gap).
+ */
+export function titleCircleProps(circles: TitleCircle[], shape: MarkerShape): Record<string, string> {
+  const bg: string[] = [], pos: string[] = [], size: string[] = [];
+  const full = 'var(--wcg-ts) var(--wcg-ts)';
+  const inner = 'calc(var(--wcg-ts) - 2px) calc(var(--wcg-ts) - 2px)';
+  const layer = (image: string, x: string, s: string): void => { bg.push(image); pos.push(`${x} center`); size.push(s); };
+  circles.forEach((c, i) => {
+    const x = `calc(${i} * (var(--wcg-ts) + var(--wcg-tg)))`;
+    const color = safeColor(c.color);
+    const url = !color && c.url ? `url("${c.url.replace(/"/g, '%22')}")` : null;
+    const fill = color ?? (url ? null : NEUTRAL);
+    if (shape === 'square') {
+      layer(fill ? `linear-gradient(${fill}, ${fill})` : url as string, `calc(${x} + 1px)`, inner);
+      layer(`linear-gradient(${RING}, ${RING})`, x, full);
+      return;
+    }
+    if (fill) {
+      layer(`radial-gradient(circle closest-side, transparent calc(100% - 1.5px), ${RING} calc(100% - 1.5px) calc(100% - 0.5px), transparent 100%)`, x, full);
+      layer(`radial-gradient(circle closest-side, ${fill} calc(100% - 0.5px), transparent 100%)`, x, full);
+    } else {
+      // the picture is square: cover its corners with the page background
+      layer(`radial-gradient(circle closest-side, transparent calc(100% - 1.5px), ${RING} calc(100% - 1.5px) calc(100% - 0.5px), var(--background-primary) 100%)`, x, full);
+      layer(url as string, x, full);
+    }
+  });
+  const n = circles.length;
+  return {
+    '--wcg-title-bg': bg.join(', ') || 'none',
+    '--wcg-title-pos': pos.join(', ') || '0 0',
+    '--wcg-title-size': size.join(', ') || 'auto',
+    '--wcg-title-w': `calc(${n} * var(--wcg-ts) + ${Math.max(n - 1, 0)} * var(--wcg-tg))`,
+  };
 }

@@ -49,7 +49,7 @@ const WORDS: Record<Lang, Words> = {
   },
 };
 
-const HEADER = '{{ww}}.{{yy}} {{circle}} {{date}} – {{weekEnd}}';
+const HEADER = '{{date}} – {{weekEnd}}';
 
 function build(w: Words, preset: StarterPreset): string {
   const section = (title: string, ...body: string[]): string[] => [`# ${title}`, '', ...body, ''];
@@ -72,7 +72,7 @@ function starterSet(lang: Lang): StarterSet {
     minimal: build(w, 'minimal'),
     journal: build(w, 'journal'),
     reflection: build(w, 'reflection'),
-    day: `# {{date}} · {{weekday}} {{circle}}\n\n## ${w.dayHeading}\n\n`,
+    day: `# {{date}} · {{weekday}}\n\n## ${w.dayHeading}\n\n`,
   };
 }
 

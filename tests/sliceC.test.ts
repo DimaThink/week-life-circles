@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { DEFAULT_SETTINGS, freshInstallSettings, normalizeSettings } from '../src/config';
-import { dayNotePath, folderChain, weekAttachmentPath } from '../src/notePaths';
+import { dayNotePath, defaultAttachmentFolder, folderChain, weekAttachmentPath } from '../src/notePaths';
 import { isVaultMedia, mediaDate, mediaInRange, nameDate } from '../src/vaultPhotos';
 import { buildWeekNote, type DateFormatter } from '../src/templates';
 import { migrate } from '../src/migrate';
+import { body } from './noteBody';
 
 const day = (y: number, m: number, d: number): Date => new Date(y, m - 1, d);
 const LEGACY = { startAge: 0, endAge: 90 };
@@ -34,8 +35,23 @@ describe('folderChain', () => {
 });
 
 describe('weekAttachmentPath', () => {
-  it('is <weekFolder>/Attachments/YY/<name> (the 1.9 location)', () => {
-    expect(weekAttachmentPath('Week life calendar', '28', '07.28.jpg')).toBe('Week life calendar/Attachments/28/07.28.jpg');
+  it('the default folder is <weekFolder>/Attachments/YY/<name> (the 1.9 location)', () => {
+    expect(defaultAttachmentFolder('Week life calendar')).toBe('Week life calendar/Attachments/{{yy}}');
+    expect(weekAttachmentPath(defaultAttachmentFolder('Week life calendar'), '07', '28', '07.28.jpg'))
+      .toBe('Week life calendar/Attachments/28/07.28.jpg');
+  });
+  it('fills {{yy}} and {{ww}} (any case, every occurrence)', () => {
+    expect(weekAttachmentPath('Photos/{{yy}}/{{ww}}', '07', '28', 'a.jpg')).toBe('Photos/28/07/a.jpg');
+    expect(weekAttachmentPath('P/{{YY}}-{{Ww}}/{{yy}}', '07', '28', 'a.jpg')).toBe('P/28-07/28/a.jpg');
+    expect(weekAttachmentPath('Static/Folder', '07', '28', 'a.jpg')).toBe('Static/Folder/a.jpg');
+  });
+  it('tidies stray, doubled and padded slashes', () => {
+    expect(weekAttachmentPath('/Photos//{{yy}}/', '07', '28', 'a.jpg')).toBe('Photos/28/a.jpg');
+    expect(weekAttachmentPath(' Photos / {{yy}} ', '07', '28', 'a.jpg')).toBe('Photos/28/a.jpg');
+  });
+  it('an empty template puts the file at the vault root', () => {
+    expect(weekAttachmentPath('', '07', '28', 'a.jpg')).toBe('a.jpg');
+    expect(weekAttachmentPath(' / ', '07', '28', 'a.jpg')).toBe('a.jpg');
   });
 });
 
@@ -100,14 +116,14 @@ describe('photo width', () => {
   const dates = { weekStart: day(2026, 11, 18), weekEnd: day(2026, 11, 24), today: day(2026, 11, 27) };
   const note = (photoWidth: number) => buildWeekNote({
     ww: '07', yy: '28', square: 'work.png', photoNames: ['a.jpg', 'b.mp4'], dates, formatDate: fmt,
-    settings: { ...DEFAULT_SETTINGS, markerStyle: 'inline', photoWidth }, templateRaw: '{{photos}}',
+    settings: { ...DEFAULT_SETTINGS, photoWidth }, templateRaw: '{{photos}}',
   });
   it('images get |<width>, videos stay bare', () => {
-    expect(note(600)).toBe('![[a.jpg|600]]\n![[b.mp4]]');
-    expect(note(320)).toBe('![[a.jpg|320]]\n![[b.mp4]]');
+    expect(note(600)).toBe('---\ncircle: work\n---\n![[a.jpg|600]]\n![[b.mp4]]');
+    expect(body(note(320))).toBe('![[a.jpg|320]]\n![[b.mp4]]');
   });
   it('0 = no width suffix', () => {
-    expect(note(0)).toBe('![[a.jpg]]\n![[b.mp4]]');
+    expect(body(note(0))).toBe('![[a.jpg]]\n![[b.mp4]]');
   });
 });
 
@@ -125,7 +141,8 @@ describe('settings: slice C', () => {
   it('settings saved by an older version keep the 1.9 behaviour', () => {
     const s = normalizeSettings(LEGACY);
     expect(s.dayLayout).toBe('week');
-    expect(s.attachmentLocation).toBe('week-folder');
+    expect(s.attachmentLocation).toBe('folder');
+    expect(s.attachmentFolder).toBe('Week life calendar/Attachments/{{yy}}');
     expect(s.photoWidth).toBe(600);
     expect(s.showMobileButton).toBe(true);
     expect(s.dayGridYears).toBe(10);
@@ -137,8 +154,27 @@ describe('settings: slice C', () => {
     expect(s).toMatchObject({ dayLayout: 'month', attachmentLocation: 'obsidian', photoWidth: 320,
       showMobileButton: false, dayGridYears: 3, vaultPhotoFolder: 'Photos/Camera' });
     expect(normalizeSettings({ dayLayout: 'x', attachmentLocation: 'x' } as never)).toMatchObject({ dayLayout: 'flat', attachmentLocation: 'obsidian' });
-    expect(normalizeSettings({ ...LEGACY, dayLayout: 'x', attachmentLocation: 'x' } as never)).toMatchObject({ dayLayout: 'week', attachmentLocation: 'week-folder' });
+    expect(normalizeSettings({ ...LEGACY, dayLayout: 'x', attachmentLocation: 'x' } as never)).toMatchObject({ dayLayout: 'week', attachmentLocation: 'folder' });
     expect(normalizeSettings({ showMobileButton: 'no' } as never).showMobileButton).toBe(true);
+  });
+  it('attachment location: old and legacy values map to the folder location', () => {
+    expect(normalizeSettings({ attachmentLocation: 'week-folder' } as never).attachmentLocation).toBe('folder');
+    expect(normalizeSettings({ attachmentLocation: 'folder' }).attachmentLocation).toBe('folder');
+    expect(normalizeSettings({ attachmentLocation: 'obsidian' }).attachmentLocation).toBe('obsidian');
+    expect(normalizeSettings({ ...LEGACY, attachmentLocation: 'obsidian' }).attachmentLocation).toBe('obsidian');
+    expect(normalizeSettings({}).attachmentLocation).toBe('obsidian');
+    expect(normalizeSettings({ attachmentLocation: 7 } as never).attachmentLocation).toBe('obsidian');
+  });
+  it('attachment folder: defaults from the week folder; a saved one is kept, trimmed of slashes', () => {
+    expect(normalizeSettings({}).attachmentFolder).toBe('Week life calendar/Attachments/{{yy}}');
+    expect(normalizeSettings({ weekFolder: 'Weeks', attachmentFolder: 'Media/{{yy}}/{{ww}}' }).attachmentFolder)
+      .toBe('Media/{{yy}}/{{ww}}');
+    expect(normalizeSettings({ attachmentFolder: '  /Media/{{yy}}/ ' }).attachmentFolder).toBe('Media/{{yy}}');
+    expect(normalizeSettings({ weekFolder: 'Weeks', attachmentFolder: ' / ' }).attachmentFolder).toBe('Weeks/Attachments/{{yy}}');
+  });
+  it('attachment folder: a missing one follows a custom week folder', () => {
+    expect(normalizeSettings({ ...LEGACY, weekFolder: '/Weeks/' }).attachmentFolder).toBe('Weeks/Attachments/{{yy}}');
+    expect(normalizeSettings({ weekFolder: 'Weeks', attachmentFolder: 5 } as never).attachmentFolder).toBe('Weeks/Attachments/{{yy}}');
   });
   it('photo width: whole, 0..4000; negative or junk = 600', () => {
     expect(normalizeSettings({ photoWidth: 0 }).photoWidth).toBe(0);

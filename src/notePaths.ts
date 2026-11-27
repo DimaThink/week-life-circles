@@ -26,7 +26,19 @@ export function folderChain(filePath: string): string[] {
   return parts.map((_, i) => parts.slice(0, i + 1).join('/'));
 }
 
-/** Where a week's uploads go with the `week-folder` attachment location: `<weekFolder>/Attachments/YY/<name>`. */
-export function weekAttachmentPath(weekFolder: string, yy: string, name: string): string {
-  return `${weekFolder}/Attachments/${yy}/${name}`;
+/** The default attachment folder of the `folder` location: `<weekFolder>/Attachments/{{yy}}`. */
+export function defaultAttachmentFolder(weekFolder: string): string {
+  return `${weekFolder}/Attachments/{{yy}}`;
+}
+
+/**
+ * Where a week's upload goes with the `folder` attachment location: the folder template
+ * (`{{yy}}` and `{{ww}}` filled in, slashes tidied) followed by the file name.
+ */
+export function weekAttachmentPath(folderTemplate: string, ww: string, yy: string, name: string): string {
+  const folder = folderTemplate
+    .replace(/\{\{yy\}\}/gi, yy)
+    .replace(/\{\{ww\}\}/gi, ww)
+    .split('/').map(p => p.trim()).filter(p => p !== '').join('/');
+  return folder ? `${folder}/${name}` : name;
 }

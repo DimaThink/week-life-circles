@@ -15,7 +15,7 @@ export interface AutoCircleHost {
   /** The circles to draw for the note at `path`, or null (not a week/day note, or nothing to draw). */
   autoCirclePlan(path: string, text: () => string): AutoCirclePlan | null;
   /** The element showing `keys` (one `.sq` per circle, coloured like inline markers). */
-  renderAutoCircles(keys: string[], atEnd: boolean): HTMLElement;
+  renderAutoCircles(keys: string[], atEnd: boolean, shape: AutoCirclePlan['shape']): HTMLElement;
   /** Bumped when settings change, so every drawn circle is redrawn. */
   readonly autoCircleVersion: number;
 }
@@ -28,15 +28,16 @@ class CirclesWidget extends WidgetType {
     private readonly host: AutoCircleHost,
     private readonly keys: string[],
     private readonly atEnd: boolean,
+    private readonly shape: AutoCirclePlan['shape'],
     private readonly version: number,
   ) { super(); }
 
   eq(other: CirclesWidget): boolean {
-    return other.version === this.version && other.atEnd === this.atEnd && other.keys.join('\n') === this.keys.join('\n');
+    return other.version === this.version && other.atEnd === this.atEnd && other.shape === this.shape && other.keys.join('\n') === this.keys.join('\n');
   }
 
   toDOM(): HTMLElement {
-    return this.host.renderAutoCircles(this.keys, this.atEnd);
+    return this.host.renderAutoCircles(this.keys, this.atEnd, this.shape);
   }
 
   /** Clicks on the circle are left to the editor (it does nothing special). */
@@ -81,7 +82,7 @@ export function autoCircleEditorExtension(host: AutoCircleHost): Extension {
         if (!plan || plan.line + 1 > state.doc.lines) return Decoration.none;
         const line = state.doc.line(plan.line + 1);
         const pos = line.from + Math.min(plan.ch, line.length);
-        const widget = new CirclesWidget(host, plan.keys, plan.atEnd, host.autoCircleVersion);
+        const widget = new CirclesWidget(host, plan.keys, plan.atEnd, plan.shape, host.autoCircleVersion);
         return Decoration.set([Decoration.widget({ widget, side: 1 }).range(pos)]);
       } catch (e) {
         console.error('week-life-circles: cannot draw the circle', e);
@@ -102,7 +103,7 @@ export function autoCirclePostProcessor(host: AutoCircleHost): (el: HTMLElement,
       el.querySelectorAll(`.${AUTO_CIRCLE_CLASS}`).forEach(n => n.remove());
       const first = el.firstElementChild;
       const block = first?.instanceOf(HTMLElement) ? first : el;
-      placeInRendered(block, host.renderAutoCircles(plan.keys, plan.atEnd), plan.atEnd);
+      placeInRendered(block, host.renderAutoCircles(plan.keys, plan.atEnd, plan.shape), plan.atEnd);
     } catch (e) {
       console.error('week-life-circles: cannot draw the circle', e);
     }

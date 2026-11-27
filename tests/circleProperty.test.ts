@@ -1,11 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import type { SquareDef } from '../src/config';
 import { DEFAULT_SETTINGS, normalizeSettings, freshInstallSettings } from '../src/config';
-import { circleValue, readPropertyValues, resolveCircles, withCircleProperty } from '../src/circleProperty';
-import { planCircleMigration } from '../src/circleMigration';
+import {
+  circlePropertyNames, circleValue, findCircleProperty, hasAnyProperty, readPropertyValues, resolveCircles,
+  shapeOfProperty, withCircleProperty,
+} from '../src/circleProperty';
+import { planCircleMigration, stripInlineMarkers } from '../src/circleMigration';
 import { readWeekData } from '../src/weekFiles';
 import { readDayData } from '../src/dayFiles';
-import { buildWeekNote, renderDayTemplate, type DateFormatter } from '../src/templates';
+import { buildWeekNote, renderDayTemplate, templateProperty, type DateFormatter } from '../src/templates';
 import { migrate } from '../src/migrate';
 
 const squares: SquareDef[] = [
@@ -16,7 +19,7 @@ const squares: SquareDef[] = [
 ];
 const keys = squares.map(q => q.key);
 const reader = (content: string) => async (): Promise<string> => content;
-const prop = { name: 'circle', squares };
+const prop = { names: ['circle'], squares };
 
 describe('circleValue', () => {
   it('is the key without its extension (the squareClass without sq-)', () => {
@@ -125,59 +128,102 @@ const d0 = new Date(2025, 3, 30);
 const dates = { weekStart: d0, weekEnd: new Date(2025, 4, 6), today: d0 };
 
 describe('writing the circle into new notes', () => {
-  const week = (markerStyle: 'inline' | 'property' | 'both', templateRaw = '{{ww}}.{{yy}} {{circle}} {{date}}\nbody') =>
+  const week = (templateRaw = '{{ww}}.{{yy}} {{circle}} {{date}}\nbody', circleProperty = 'circle', square = 'work.png') =>
     buildWeekNote({
-      ww: '04', yy: '25', square: 'work.png', dates, formatDate: fmt, photoNames: [], templateRaw,
-      settings: { ...DEFAULT_SETTINGS, markerStyle, circleProperty: 'circle' },
+      ww: '04', yy: '25', square, dates, formatDate: fmt, photoNames: [], templateRaw,
+      settings: { ...DEFAULT_SETTINGS, circleProperty },
     });
-  it('inline: only the marker, as before', () => {
-    expect(week('inline')).toBe('04.25 <span class="sq sq-work"></span> 30.04.2025\nbody');
+  const day = (templateRaw: string, circleProperty = 'circle') => renderDayTemplate({
+    templateRaw, day: d0, today: d0, square: 'work.png', formatDate: fmt,
+    settings: { ...DEFAULT_SETTINGS, circleProperty },
   });
-  it('property: frontmatter only; {{circle}} renders empty', () => {
-    expect(week('property')).toBe('---\ncircle: work\n---\n04.25 30.04.2025\nbody');
-  });
-  it('both: frontmatter and the marker', () => {
-    expect(week('both')).toBe('---\ncircle: work\n---\n04.25 <span class="sq sq-work"></span> 30.04.2025\nbody');
+  it('frontmatter only; {{circle}} renders empty', () => {
+    expect(week()).toBe('---\ncircle: work\n---\n04.25 30.04.2025\nbody');
   });
   it('a template that has frontmatter keeps it and gains the property', () => {
-    expect(week('property', '---\ntags: week\n---\n{{ww}} {{circle}}')).toBe('---\ntags: week\ncircle: work\n---\n04');
+    expect(week('---\ntags: week\n---\n{{ww}} {{circle}}')).toBe('---\ntags: week\ncircle: work\n---\n04');
   });
-  it('uses the configured property name', () => {
-    const out = buildWeekNote({
-      ww: '04', yy: '25', square: 'rest.png', dates, formatDate: fmt, photoNames: [], templateRaw: 'x',
-      settings: { ...DEFAULT_SETTINGS, markerStyle: 'property', circleProperty: 'kind' },
-    });
-    expect(out).toBe('---\nkind: rest\n---\nx');
+  it('uses the configured property name when the template names none', () => {
+    expect(week('x', 'kind', 'rest.png')).toBe('---\nkind: rest\n---\nx');
   });
-  it('day notes follow the same style', () => {
-    const settings = { ...DEFAULT_SETTINGS, markerStyle: 'property' as const };
-    expect(renderDayTemplate({ templateRaw: '# {{date}} {{circle}}', day: d0, today: d0, square: 'work.png', settings, formatDate: fmt }))
-      .toBe('---\ncircle: work\n---\n# 30.04.2025');
+  it('{{square}} writes the `square` property, {{circle}} the `circle` one, whatever is configured', () => {
+    expect(week('{{ww}} {{square}} {{date}}', 'kind')).toBe('---\nsquare: work\n---\n04 30.04.2025');
+    expect(week('{{ww}} {{circle}}', 'kind')).toBe('---\ncircle: work\n---\n04');
+    expect(day('# {{date}} {{square}}')).toBe('---\nsquare: work\n---\n# 30.04.2025');
+    expect(day('{{square}} # {{date}}', 'kind')).toBe('---\nsquare: work\n---\n# 30.04.2025');
+  });
+  it('day notes get the property too', () => {
+    expect(day('# {{date}} {{circle}}')).toBe('---\ncircle: work\n---\n# 30.04.2025');
+    expect(day('# {{date}}', 'kind')).toBe('---\nkind: work\n---\n# 30.04.2025');
   });
   it('what is written reads back as the chosen circle', async () => {
-    const r = await readWeekData(reader(week('property')), { name: '04.25.md' }, DEFAULT_SETTINGS.squares.map(q => q.key),
-      { name: 'circle', squares: DEFAULT_SETTINGS.squares });
+    const r = await readWeekData(reader(week()), { name: '04.25.md' }, DEFAULT_SETTINGS.squares.map(q => q.key),
+      { names: ['circle'], squares: DEFAULT_SETTINGS.squares });
     expect(r.squares).toEqual(['work.png']);
   });
 });
 
-describe('settings: markerStyle and circleProperty', () => {
-  it('fresh install: property only, property "circle"', () => {
-    expect(DEFAULT_SETTINGS.markerStyle).toBe('property');
+describe('templateProperty', () => {
+  it('{{square}} -> square, {{circle}} -> circle, neither -> the configured name', () => {
+    expect(templateProperty('{{ww}} {{square}}', 'circle')).toBe('square');
+    expect(templateProperty('{{ww}} {{circle}}', 'square')).toBe('circle');
+    expect(templateProperty('{{ww}} {{date}}', 'circle')).toBe('circle');
+    expect(templateProperty('{{ww}} {{date}}', 'week type')).toBe('week type');
+    expect(templateProperty('', 'kind')).toBe('kind');
+  });
+  it('a placeholder beats a custom name; {{square}} wins when both are present', () => {
+    expect(templateProperty('{{circle}}', 'kind')).toBe('circle');
+    expect(templateProperty('{{square}}', 'kind')).toBe('square');
+    expect(templateProperty('{{circle}} {{square}}', 'kind')).toBe('square');
+  });
+  it('a lookalike is not a placeholder', () => {
+    expect(templateProperty('{{squares}} {circle} {{ circle }}', 'kind')).toBe('kind');
+  });
+});
+
+describe('property names and shape', () => {
+  it('circlePropertyNames: the configured name first, then circle and square, without duplicates', () => {
+    expect(circlePropertyNames('kind')).toEqual(['kind', 'circle', 'square']);
+    expect(circlePropertyNames('circle')).toEqual(['circle', 'square']);
+    expect(circlePropertyNames('square')).toEqual(['square', 'circle']);
+    expect(circlePropertyNames('Circle')).toEqual(['Circle', 'square']);
+    expect(circlePropertyNames('')).toEqual(['circle', 'square']);
+  });
+  it('shapeOfProperty: only `square` draws squares', () => {
+    expect(shapeOfProperty('square')).toBe('square');
+    expect(shapeOfProperty(' Square ')).toBe('square');
+    expect(shapeOfProperty('circle')).toBe('circle');
+    expect(shapeOfProperty('kind')).toBe('circle');
+    expect(shapeOfProperty('squares')).toBe('circle');
+  });
+  it('findCircleProperty: the first name in order with a value that names a circle', () => {
+    const names = circlePropertyNames('kind');
+    const p = { names, squares };
+    expect(findCircleProperty('---\nsquare: rest\ncircle: work\n---\nx', p)).toEqual({ keys: ['work.png'], name: 'circle' });
+    expect(findCircleProperty('---\nsquare: rest\nkind: work\n---\nx', p)).toEqual({ keys: ['work.png'], name: 'kind' });
+    expect(findCircleProperty('---\nsquare: [rest, work]\n---\nx', p)).toEqual({ keys: ['rest.png', 'work.png'], name: 'square' });
+    // a name whose values name no circle is skipped
+    expect(findCircleProperty('---\nkind: nope\nsquare: rest\n---\nx', p)).toEqual({ keys: ['rest.png'], name: 'square' });
+    expect(findCircleProperty('---\nkind: nope\n---\nx', p)).toBeNull();
+    expect(findCircleProperty('circle: work\nx', p)).toBeNull();
+  });
+  it('hasAnyProperty: any of the names, with any value (an empty one too)', () => {
+    expect(hasAnyProperty('---\nsquare: nope\n---\nx', ['circle', 'square'])).toBe(true);
+    expect(hasAnyProperty('---\ncircle:\n---\nx', ['circle'])).toBe(true);
+    expect(hasAnyProperty('---\ntags: a\n---\nx', ['circle', 'square'])).toBe(false);
+    expect(hasAnyProperty('circle: work', ['circle'])).toBe(false);
+  });
+});
+
+describe('settings: circleProperty', () => {
+  it('fresh install: property "circle"', () => {
     expect(DEFAULT_SETTINGS.circleProperty).toBe('circle');
-    expect(normalizeSettings({}).markerStyle).toBe('property');
-    expect(freshInstallSettings('uk').markerStyle).toBe('property');
-    expect(migrate(null).data.settings.markerStyle).toBe('property');
+    expect(normalizeSettings({}).circleProperty).toBe('circle');
+    expect(freshInstallSettings('uk').circleProperty).toBe('circle');
+    expect(migrate(null).data.settings.circleProperty).toBe('circle');
   });
-  it('settings saved by an older version keep inline markers only', () => {
-    const s = normalizeSettings({ startAge: 0, endAge: 90 });
-    expect(s.markerStyle).toBe('inline');
-    expect(s.circleProperty).toBe('circle');
-  });
-  it('a saved choice is kept, an invalid one falls back', () => {
-    expect(normalizeSettings({ startAge: 0, markerStyle: 'property' }).markerStyle).toBe('property');
-    expect(normalizeSettings({ markerStyle: 'weird' } as never).markerStyle).toBe('property');
-    expect(normalizeSettings({ startAge: 0, markerStyle: 'weird' } as never).markerStyle).toBe('inline');
+  it('settings saved by an older version get "circle" too', () => {
+    expect(normalizeSettings({ startAge: 0, endAge: 90 }).circleProperty).toBe('circle');
   });
   it('the property name is trimmed; unusable names fall back to "circle"', () => {
     expect(normalizeSettings({ circleProperty: '  week type ' }).circleProperty).toBe('week type');
@@ -197,26 +243,80 @@ describe('planCircleMigration', () => {
     { path: 'W/28/10.28.md', kind: 'week' as const, text: '10.28 ![[IMG_0001.jpg|600]]' },
     { path: 'D/01.28/2026-04-30.md', kind: 'day' as const, text: '---\ntags: d\n---\n# day ![[flag-uk.png|14]] ![[rest.png]]' },
     { path: 'D/01.28/2026-05-01.md', kind: 'day' as const, text: '---\ncircle:\n---\n# `sq:rest.png`' },
+    { path: 'W/28/11.28.md', kind: 'week' as const, text: '---\nsquare: work\n---\n11.28 x' },
   ];
-  const plan = planCircleMigration(notes, squares, 'circle');
+  const names = circlePropertyNames('circle');
+  const plan = planCircleMigration(notes, squares, names);
 
-  it('plans a value for every note with an inline marker but no property', () => {
+  it('plans values for notes without a property and strip-only items for notes that have one', () => {
     expect(plan.items).toEqual([
-      { path: 'W/28/07.28.md', kind: 'week', values: ['work'] },
-      { path: 'W/24/04.24.md', kind: 'week', values: ['work', 'rest'] },
-      { path: 'D/01.28/2026-04-30.md', kind: 'day', values: ['flag-uk'] },
+      { path: 'W/28/07.28.md', kind: 'week', values: ['work'], markerLine: 0 },
+      { path: 'W/24/04.24.md', kind: 'week', values: ['work', 'rest'], markerLine: 1 },
+      { path: 'W/28/08.28.md', kind: 'week', values: [], markerLine: 3 },
+      { path: 'D/01.28/2026-04-30.md', kind: 'day', values: ['flag-uk'], markerLine: 3 },
+      { path: 'D/01.28/2026-05-01.md', kind: 'day', values: [], markerLine: 3 },
     ]);
   });
-  it('counts what it leaves alone', () => {
-    expect(plan.counts).toEqual({ week: 2, day: 1, hasProperty: 2, unknown: 1 });
+  it('counts: hasProperty is only notes with a property and no marker', () => {
+    expect(plan.counts).toEqual({ week: 2, day: 1, stripOnly: 2, hasProperty: 1, unknown: 1 });
+  });
+  it('any of the names counts as the property', () => {
+    const only = planCircleMigration([notes[7]], squares, ['circle']);
+    expect(only.counts.hasProperty).toBe(0);
+    const s = planCircleMigration(
+      [{ path: 'W/x.md', kind: 'week', text: '---\nsquare: rest\n---\n12.28 `sq:work.png`' }], squares, names);
+    expect(s.items).toEqual([{ path: 'W/x.md', kind: 'week', values: [], markerLine: 3 }]);
+    expect(s.counts.stripOnly).toBe(1);
   });
   it('is idempotent: applying the plan leaves nothing to do', () => {
     const after = notes.map(n => {
       const item = plan.items.find(i => i.path === n.path);
-      return item ? { ...n, text: withCircleProperty(n.text, 'circle', item.values) } : n;
+      if (!item) return n;
+      const stripped = stripInlineMarkers(n.text, item.markerLine, squares);
+      return { ...n, text: item.values.length ? withCircleProperty(stripped, 'circle', item.values) : stripped };
     });
-    const again = planCircleMigration(after, squares, 'circle');
+    const again = planCircleMigration(after, squares, names);
     expect(again.items).toEqual([]);
-    expect(again.counts.hasProperty).toBe(5);
+    expect(again.counts).toEqual({ week: 0, day: 0, stripOnly: 0, hasProperty: 6, unknown: 1 });
+    expect(after[1].text).toBe('---\ncircle:\n  - work\n  - rest\n---\n# 4-5.24');
+    expect(after[2].text).toBe('---\ncircle: rest\n---\n08.28');
+  });
+});
+
+describe('stripInlineMarkers', () => {
+  it('removes a span in the middle with one of the spaces around it', () => {
+    expect(stripInlineMarkers('06.28 <span class="sq sq-work"></span> 04.06.2026', 0, squares)).toBe('06.28 04.06.2026');
+  });
+  it('removes several spans and `sq:` code markers', () => {
+    expect(stripInlineMarkers('06.28 <span class="sq sq-work"></span> <span class="sq sq-rest"></span> x', 0, squares))
+      .toBe('06.28 x');
+    expect(stripInlineMarkers('a <span class="sq sq-work"></span> b <span class="sq sq-rest"></span>', 0, squares)).toBe('a b');
+    expect(stripInlineMarkers('# day `sq:rest.png` text', 0, squares)).toBe('# day text');
+    expect(stripInlineMarkers('`sq:work.png` # day', 0, squares)).toBe('# day');
+  });
+  it('removes an embed of a circle picture, keeps a photo embed', () => {
+    expect(stripInlineMarkers('# day ![[flag-uk.png|14]]', 0, squares)).toBe('# day');
+    expect(stripInlineMarkers('# day ![[Pics/flag-uk.png]] x', 0, squares)).toBe('# day x');
+    expect(stripInlineMarkers('# day ![[holiday.jpg|600]]', 0, squares)).toBe('# day ![[holiday.jpg|600]]');
+    expect(stripInlineMarkers('# day ![[flag-uk.png|14]] ![[holiday.jpg|600]]', 0, squares))
+      .toBe('# day ![[holiday.jpg|600]]');
+    const gym: SquareDef[] = [{ key: 'gym', name: 'Gym', color: null, image: 'barbell.png' }];
+    expect(stripInlineMarkers('x ![[barbell.png|20]] y', 0, gym)).toBe('x y');
+  });
+  it('removes a line that held only markers; other lines are untouched', () => {
+    expect(stripInlineMarkers('# 4-5.24\n`sq:work.png` `sq:rest.png`\nbody', 1, squares)).toBe('# 4-5.24\nbody');
+    expect(stripInlineMarkers('a <span class="sq sq-work"></span>\nb <span class="sq sq-work"></span>', 1, squares))
+      .toBe('a <span class="sq sq-work"></span>\nb');
+  });
+  it('keeps CRLF line endings', () => {
+    expect(stripInlineMarkers('---\r\ntags: a\r\n---\r\n06.28 `sq:work.png` x\r\nbody', 3, squares))
+      .toBe('---\r\ntags: a\r\n---\r\n06.28 x\r\nbody');
+  });
+  it('a line without markers, or an index out of range, returns the text unchanged', () => {
+    const text = '06.28 <span class="sq sq-work"></span>\nbody';
+    expect(stripInlineMarkers(text, 1, squares)).toBe(text);
+    expect(stripInlineMarkers(text, -1, squares)).toBe(text);
+    expect(stripInlineMarkers(text, 2, squares)).toBe(text);
+    expect(stripInlineMarkers(text, 99, squares)).toBe(text);
   });
 });

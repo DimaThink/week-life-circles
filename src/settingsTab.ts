@@ -19,12 +19,17 @@ interface WlcHost {
   readonly currentAge: number | null;
 }
 
-type TextKey = 'birthDate' | 'yearStartDate' | 'weekFolder' | 'dayFolder' | 'weekTemplatePath' | 'dayTemplatePath' | 'vaultPhotoFolder' | 'immichUrl' | 'immichApiKey';
+type TextKey = 'birthDate' | 'yearStartDate' | 'weekFolder' | 'dayFolder' | 'weekTemplatePath' | 'dayTemplatePath' | 'vaultPhotoFolder' | 'attachmentFolder' | 'immichUrl' | 'immichApiKey';
+
+/** Property names the circle-property dropdown offers; anything else is a custom name. */
+const PROPERTY_PRESETS = ['circle', 'square'];
 
 export class WeekLifeCirclesSettingTab extends PluginSettingTab {
   private readonly host: WlcHost;
   private readonly squares: SquareEditor;
   private readonly daySquares: SquareEditor;
+  /** The "Custom…" property option is picked (the name field shows even while it still holds a preset). */
+  private customProperty = false;
 
   constructor(app: App, plugin: Plugin & WlcHost) {
     super(app, plugin);
@@ -163,30 +168,25 @@ export class WeekLifeCirclesSettingTab extends PluginSettingTab {
     // --- Circles (previewed in the grid's current view; the view is switched from the grid's toolbar) ---
     new Setting(containerEl).setName(t('settings.circles')).setHeading()
       .setDesc(t('settings.circlesDesc'));
-    new Setting(containerEl)
-      .setName(t('settings.markerShape'))
-      .setDesc(t('settings.markerShapeDesc'))
-      .addDropdown(d => d
-        .addOption('circle', t('settings.shapeCircle'))
-        .addOption('square', t('settings.shapeSquare'))
-        .setValue(s.noteShape)
-        .onChange(v => { s.noteShape = v === 'square' ? 'square' : 'circle'; void save(); }));
-    new Setting(containerEl)
-      .setName(t('settings.markerStyle'))
-      .setDesc(t('settings.markerStyleDesc'))
-      .addDropdown(d => d
-        .addOption('inline', t('settings.markerInline'))
-        .addOption('property', t('settings.markerProperty'))
-        .addOption('both', t('settings.markerBoth'))
-        .setValue(s.markerStyle)
-        .onChange(v => { s.markerStyle = v === 'inline' || v === 'property' ? v : 'both'; void save(); }));
+    const custom = this.customProperty || !PROPERTY_PRESETS.includes(s.circleProperty);
     new Setting(containerEl)
       .setName(t('settings.circleProperty'))
       .setDesc(t('settings.circlePropertyDesc'))
-      .addText(tx => tx.setPlaceholder(DEFAULT_SETTINGS.circleProperty).setValue(s.circleProperty).onChange(v => {
-        s.circleProperty = cleanPropertyName(v);
-        void save();
-      }));
+      .addDropdown(d => d
+        .addOption('circle', t('settings.propCircle'))
+        .addOption('square', t('settings.propSquare'))
+        .addOption('custom', t('settings.propCustom'))
+        .setValue(custom ? 'custom' : s.circleProperty)
+        .onChange(async v => {
+          this.customProperty = v === 'custom';
+          if (v !== 'custom') { s.circleProperty = v; await save(); }
+          this.display();
+        }));
+    if (custom) {
+      new Setting(containerEl).setName(t('settings.propCustomName')).addText(tx => tx
+        .setPlaceholder('mood').setValue(PROPERTY_PRESETS.includes(s.circleProperty) ? '' : s.circleProperty)
+        .onChange(v => { if (v.trim()) { s.circleProperty = cleanPropertyName(v); void save(); } }));
+    }
     this.squares.mount(containerEl);
     new Setting(containerEl)
       .setName(t('settings.daySquaresEnabled'))
@@ -218,18 +218,22 @@ export class WeekLifeCirclesSettingTab extends PluginSettingTab {
       .setName(t('settings.attachmentLocation'))
       .setDesc(t('settings.attachmentLocationDesc'))
       .addDropdown(d => d
-        .addOption('week-folder', t('settings.attachmentWeekFolder'))
         .addOption('obsidian', t('settings.attachmentObsidian'))
+        .addOption('folder', t('settings.attachmentFolder'))
         .setValue(s.attachmentLocation)
-        .onChange(v => { s.attachmentLocation = v === 'week-folder' ? v : 'obsidian'; void save(); }));
+        .onChange(async v => {
+          s.attachmentLocation = v === 'folder' ? v : 'obsidian';
+          await save();
+          this.display(); // show or hide the folder
+        }));
+    if (s.attachmentLocation === 'folder') {
+      addText(t('settings.attachmentFolderPath'), 'attachmentFolder', v => v.trim().replace(/^\/+|\/+$/g, '') || `${s.weekFolder}/Attachments/{{yy}}`,
+        t('settings.attachmentFolderPathDesc'), 'Photos/{{yy}}');
+    }
     addNumber(t('settings.photoWidth'), 'photoWidth', t('settings.photoWidthDesc'));
     addText(t('settings.vaultPhotoFolder'), 'vaultPhotoFolder', optionalPath, t('settings.vaultPhotoFolderDesc'));
     addText(t('settings.weekTemplatePath'), 'weekTemplatePath', optionalPath, t('settings.weekTemplatePathDesc'));
     addText(t('settings.dayTemplatePath'), 'dayTemplatePath', optionalPath, t('settings.dayTemplatePathDesc'));
-    new Setting(containerEl)
-      .setName(t('settings.legacyTemplates'))
-      .setDesc(t('settings.legacyTemplatesDesc'))
-      .addToggle(tg => tg.setValue(s.legacyTemplates).onChange(v => { s.legacyTemplates = v; void save(); }));
 
     const example = (): string => t('settings.dateFormatDesc', { example: formatDate(new Date(), s.dateFormat) });
     const dateSetting = new Setting(containerEl).setName(t('settings.dateFormat')).setDesc(example());
@@ -239,8 +243,8 @@ export class WeekLifeCirclesSettingTab extends PluginSettingTab {
       void save();
     }));
 
-    const weekPh = t('settings.placeholders', { tpl: '{{ww}} {{yy}} {{circle}} {{date}} {{weekEnd}} {{today}} {{days}} {{photos}}' });
-    const dayPh = t('settings.placeholders', { tpl: '{{circle}} {{date}} {{weekday}} {{yesterday}} {{today}}' });
+    const weekPh = t('settings.placeholders', { tpl: '{{date}} {{weekEnd}} {{today}} {{days}} {{photos}} {{ww}} {{yy}} {{circle}} {{square}}' });
+    const dayPh = t('settings.placeholders', { tpl: '{{date}} {{weekday}} {{yesterday}} {{today}} {{circle}} {{square}}' });
     new Setting(containerEl).setName(t('settings.weekTemplate')).setDesc(weekPh).addTextArea(tx => {
       tx.inputEl.rows = 10;
       tx.setValue(s.weekTemplate).onChange(async v => { s.weekTemplate = v; await save(); });

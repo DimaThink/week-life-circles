@@ -1,22 +1,8 @@
-import type { Settings, SquareDef } from './config';
-import { daySquareSet } from './config';
-import { squareClass } from './squares';
+import type { Settings } from './config';
 import { circleValue, withCircleProperty } from './circleProperty';
 
 // Extensions that embed as images (get the photoWidth display-width suffix); others embed bare
 export const PHOTO_IMAGE_EXTS = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif', 'bmp']);
-
-/**
- * How a note references a square. Colour squares, and image squares converted
- * from colour (their picture isn't named after the key), are a class span; a
- * plain image square is an embed of its own file. Both read back by key.
- */
-export function squareMarkup(square: string, squares: SquareDef[]): string {
-  const q = squares.find(t => t.key === square);
-  return q && (q.color || (q.image && q.image !== q.key))
-    ? `<span class="sq ${squareClass(square)}"></span>`
-    : `![[${square}|14]]`;
-}
 
 /** `![[name|width]]` for an image (no width when it is 0), `![[name]]` for anything else. */
 function photoEmbed(name: string, width: number): string {
@@ -73,36 +59,29 @@ function fill(
 }
 
 /**
- * Apply the marker style to a template: `property` drops `{{circle}}` (at the end of a line
- * with the spaces before it, elsewhere with one space after it, so no stray or double space
- * is left); `inline` keeps it.
+ * The property a new note gets its circle in: `{{square}}` in the template means `square`,
+ * `{{circle}}` means `circle`, and a template with neither uses the configured property.
  */
-function circleTemplate(text: string, settings: Settings): string {
-  if (settings.markerStyle !== 'property') return text;
+export function templateProperty(template: string, configured: string): string {
+  if (/\{\{square\}\}/.test(template)) return 'square';
+  if (/\{\{circle\}\}/.test(template)) return 'circle';
+  return configured;
+}
+
+/**
+ * Drop `{{circle}}` / `{{square}}` from a template (the circle lives in the property): at the
+ * end of a line with the spaces before it, elsewhere with one space after it, so no stray or
+ * double space is left.
+ */
+function dropCirclePlaceholders(text: string): string {
   return text
     .replace(/[ \t]*\{\{(?:circle|square)\}\}[ \t]*$/gm, '')
     .replace(/\{\{(?:circle|square)\}\}[ \t]?/g, '');
 }
 
-/**
- * The Templater tags of the original personal day template, as plugin versions before 1.10
- * filled them in a day template FILE (legacyTemplates): the first script block is dropped,
- * `<% date %>` / `<% dayUA %>` / a `-1` tag become the day, its weekday and the day before
- * (YYYY-MM-DD), and the literal work-circle span becomes the chosen circle.
- */
-function legacyTemplater(text: string, day: Date, sq: string, fmt: DateFormatter): string {
-  const ymd = (d: Date): string => fmt(d, 'YYYY-MM-DD');
-  return text
-    .replace(/<%\*[\s\S]*?-?%>\n?/, '')
-    .replace(/<%\s*date\s*%>/g, () => ymd(day))
-    .replace(/<%\s*dayUA\s*%>/g, () => fmt(day, 'dddd'))
-    .replace(/<%[^%]*?-1[^%]*?%>/g, () => ymd(addDays(day, -1)))
-    .replace(/<span class="sq sq-work"><\/span>/, () => sq);
-}
-
-/** The finished note with the circle property in its frontmatter, unless the style is inline-only. */
-function circleFrontmatter(text: string, square: string, settings: Settings): string {
-  return settings.markerStyle === 'inline' ? text : withCircleProperty(text, settings.circleProperty, [circleValue(square)]);
+/** The finished note with the circle in its frontmatter property. */
+function withCircle(text: string, template: string, square: string, settings: Settings): string {
+  return withCircleProperty(text, templateProperty(template, settings.circleProperty), [circleValue(square)]);
 }
 
 /** Text of a new week note: the template note's text if one is set and found, else the settings template. */
@@ -112,18 +91,16 @@ export function buildWeekNote(opts: {
   templateRaw?: string | null;
 }): string {
   const { ww, yy, square, photoNames, settings, dates, formatDate } = opts;
-  const sq = squareMarkup(square, settings.squares);
+  const template = opts.templateRaw ?? settings.weekTemplate;
   const photos = photoEmbeds(photoNames, settings.photoWidth);
   const days = dayLines(dates.weekStart, dates.weekEnd, formatDate, settings.dateFormat);
-  const text = circleTemplate(opts.templateRaw ?? settings.weekTemplate, settings)
+  const text = dropCirclePlaceholders(template)
     // a `{{photos}}` line of its own leaves no blank line behind when there are no photos
     .replace(/^\{\{photos\}\}\n/gm, () => (photos ? photos + '\n' : ''));
-  // legacyTemplates: `{{date}}` in a template FILE keeps its old meaning, the creation date
-  const legacyFile = settings.legacyTemplates && opts.templateRaw != null;
-  return circleFrontmatter(fill(text,
-    { ww, yy, circle: sq, square: sq, photos, days },
-    { date: legacyFile ? dates.today : dates.weekStart, today: dates.today, weekEnd: dates.weekEnd },
-    formatDate, settings.dateFormat), square, settings);
+  return withCircle(fill(text,
+    { ww, yy, photos, days },
+    { date: dates.weekStart, today: dates.today, weekEnd: dates.weekEnd },
+    formatDate, settings.dateFormat), template, square, settings);
 }
 
 /** Text of a new day note, from the day template file (when found) or the settings text; same placeholders. */
@@ -132,14 +109,9 @@ export function renderDayTemplate(opts: {
   formatDate: DateFormatter;
 }): string {
   const { templateRaw, day, today, square, settings, formatDate } = opts;
-  const sq = squareMarkup(square, daySquareSet(settings));
-  // legacyTemplates: a template FILE gets the pre-1.10 handling ({{date}} = YYYY-MM-DD)
-  const legacyFile = settings.legacyTemplates && templateRaw !== null;
-  // (the literal work-circle span stays empty with property-only markers, like {{circle}})
-  const legacySq = settings.markerStyle === 'property' ? '' : sq;
-  const raw = legacyFile ? legacyTemplater(templateRaw, day, legacySq, formatDate) : (templateRaw ?? settings.dayTemplate);
-  return circleFrontmatter(fill(circleTemplate(raw, settings),
-    { circle: sq, square: sq, weekday: formatDate(day, 'dddd') },
+  const template = templateRaw ?? settings.dayTemplate;
+  return withCircle(fill(dropCirclePlaceholders(template),
+    { weekday: formatDate(day, 'dddd') },
     { date: day, today, yesterday: addDays(day, -1) },
-    formatDate, settings.dateFormat, legacyFile ? { date: 'YYYY-MM-DD' } : {}), square, settings);
+    formatDate, settings.dateFormat), template, square, settings);
 }

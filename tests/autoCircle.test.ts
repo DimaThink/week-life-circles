@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import type { SquareDef } from '../src/config';
-import { DEFAULT_SETTINGS, normalizeSettings, freshInstallSettings } from '../src/config';
-import { migrate } from '../src/migrate';
-import { circleNoteKind, hasInlineMarker, planAutoCircles, planSignature } from '../src/autoCircle';
+import { DEFAULT_SETTINGS } from '../src/config';
+import { circlePropertyNames } from '../src/circleProperty';
+import { circleNoteKind, hasInlineMarker, planAutoCircles, planSignature, titleCircleProps } from '../src/autoCircle';
 import { buildWeekNote, type DateFormatter } from '../src/templates';
 
 const squares: SquareDef[] = [
@@ -11,8 +11,8 @@ const squares: SquareDef[] = [
   { key: 'flag-uk.png', name: 'Trip abroad', color: null },
   { key: 'gym', name: 'Gym', color: null, image: 'barbell.png' },
 ];
-const plan = (text: string, kind: 'week' | 'day' = 'week', property = 'circle') =>
-  planAutoCircles(text, kind, squares, property);
+const plan = (text: string, kind: 'week' | 'day' = 'week', properties: string[] = ['circle']) =>
+  planAutoCircles(text, kind, squares, properties);
 
 describe('circleNoteKind', () => {
   it('accepts only WW.YY.md in the week folder and YYYY-MM-DD.md in the day folder', () => {
@@ -50,21 +50,21 @@ describe('hasInlineMarker', () => {
 describe('planAutoCircles', () => {
   it('a week note: one circle after the first token', () => {
     expect(plan('---\ncircle: work\n---\n06.28 04.06.2026\nbody')).toEqual(
-      { line: 3, ch: 6, atEnd: false, keys: ['work.png'] });
+      { line: 3, ch: 6, atEnd: false, keys: ['work.png'], shape: 'circle' });
   });
 
   it('a multi-week note: one circle per list item, in order', () => {
     const text = '---\ncircle:\n  - work\n  - rest\n  - Trip abroad\n---\n03-05.28 01.06.2026\n';
-    expect(plan(text)).toEqual({ line: 6, ch: 9, atEnd: false, keys: ['work.png', 'rest.png', 'flag-uk.png'] });
+    expect(plan(text)).toEqual({ line: 6, ch: 9, atEnd: false, keys: ['work.png', 'rest.png', 'flag-uk.png'], shape: 'circle' });
     expect(plan('---\ncircle: [rest, work]\n---\n03-04.28 x')?.keys).toEqual(['rest.png', 'work.png']);
   });
 
   it('a day note: the first circle only; a heading gets it at the end', () => {
     expect(plan('---\ncircle: [work, rest]\n---\n2026-06-04 Thursday', 'day')).toEqual(
-      { line: 3, ch: 11, atEnd: false, keys: ['work.png'] });
+      { line: 3, ch: 11, atEnd: false, keys: ['work.png'], shape: 'circle' });
     expect(plan('---\ncircle: gym\n---\n# 04.06.2026 · Thursday  \ntext', 'day')).toEqual(
-      { line: 3, ch: 23, atEnd: true, keys: ['gym'] });
-    expect(plan('---\ncircle: gym\n---\n#', 'day')).toEqual({ line: 3, ch: 1, atEnd: true, keys: ['gym'] });
+      { line: 3, ch: 23, atEnd: true, keys: ['gym'], shape: 'circle' });
+    expect(plan('---\ncircle: gym\n---\n#', 'day')).toEqual({ line: 3, ch: 1, atEnd: true, keys: ['gym'], shape: 'circle' });
   });
 
   it('matches key, base name and circle name, case-insensitively', () => {
@@ -87,16 +87,16 @@ describe('planAutoCircles', () => {
   it('needs the property in a closed frontmatter, and the configured property name', () => {
     expect(plan('circle: work\n06.28 x')).toBeNull();
     expect(plan('---\ncircle: work\n06.28 x')).toBeNull();
-    expect(plan('---\ncircle: work\n---\n06.28 x', 'week', 'kind')).toBeNull();
-    expect(plan('---\nkind: work\n---\n06.28 x', 'week', 'kind')?.keys).toEqual(['work.png']);
-    expect(plan('---\ncircle: work\n---\n06.28 x', 'week', '')).toBeNull();
+    expect(plan('---\ncircle: work\n---\n06.28 x', 'week', ['kind'])).toBeNull();
+    expect(plan('---\nkind: work\n---\n06.28 x', 'week', ['kind'])?.keys).toEqual(['work.png']);
+    expect(plan('---\ncircle: work\n---\n06.28 x', 'week', [])).toBeNull();
   });
 
   it('skips blank lines; a one-token line gets the circle at its end; CRLF works', () => {
     expect(plan('---\ncircle: work\n---\n\n\n06.28 x')).toMatchObject({ line: 5, ch: 6 });
-    expect(plan('---\ncircle: work\n---\n06.28   ')).toEqual({ line: 3, ch: 5, atEnd: true, keys: ['work.png'] });
+    expect(plan('---\ncircle: work\n---\n06.28   ')).toEqual({ line: 3, ch: 5, atEnd: true, keys: ['work.png'], shape: 'circle' });
     expect(plan('---\r\ncircle: work\r\n---\r\n06.28 04.06.2026\r\n')).toEqual(
-      { line: 3, ch: 6, atEnd: false, keys: ['work.png'] });
+      { line: 3, ch: 6, atEnd: false, keys: ['work.png'], shape: 'circle' });
     expect(plan('---\ncircle: work\n---\n\n\n\n\n\n06.28 x')).toBeNull(); // header too far down
     expect(plan('---\ncircle: work\n---\n')).toBeNull();
   });
@@ -110,16 +110,32 @@ describe('planAutoCircles', () => {
     expect(plan('---\ncircle: work\n---\n06.28 x\n![[photo.jpg|600]]')?.keys).toEqual(['work.png']);
   });
 
-  it('works on a note created with the property marker style', () => {
+  it('works on a note built from a template', () => {
     const fmt: DateFormatter = (d, f) => (f === 'DD.MM.YYYY' ? '04.06.2026' : String(d.getTime()));
     const d = new Date(2026, 5, 4);
     const text = buildWeekNote({
       ww: '06', yy: '28', square: 'work.png', photoNames: [],
-      settings: { ...DEFAULT_SETTINGS, markerStyle: 'property', weekTemplate: '{{ww}}.{{yy}} {{circle}} {{date}}\nbody' },
+      settings: { ...DEFAULT_SETTINGS, weekTemplate: '{{ww}}.{{yy}} {{circle}} {{date}}\nbody' },
       dates: { weekStart: d, weekEnd: d, today: d }, formatDate: fmt,
     });
     expect(text.split('\n').slice(-2)).toEqual(['06.28 04.06.2026', 'body']);
-    expect(plan(text)).toMatchObject({ ch: 6, atEnd: false, keys: ['work.png'] });
+    expect(plan(text)).toMatchObject({ ch: 6, atEnd: false, keys: ['work.png'], shape: 'circle' });
+  });
+
+  it('a `square:` note draws squares', () => {
+    expect(plan('---\nsquare: work\n---\n06.28 x', 'week', ['circle', 'square'])).toEqual(
+      { line: 3, ch: 6, atEnd: false, keys: ['work.png'], shape: 'square' });
+    expect(plan('---\nSquare: rest\n---\n06.28 x', 'week', ['square'])?.shape).toBe('square');
+  });
+
+  it('with a custom property name, `circle` and `square` are still read', () => {
+    const names = circlePropertyNames('kind');
+    expect(plan('---\nkind: work\n---\n06.28 x', 'week', names)).toMatchObject({ keys: ['work.png'], shape: 'circle' });
+    expect(plan('---\ncircle: rest\n---\n06.28 x', 'week', names)).toMatchObject({ keys: ['rest.png'], shape: 'circle' });
+    expect(plan('---\nsquare: rest\n---\n06.28 x', 'week', names)).toMatchObject({ keys: ['rest.png'], shape: 'square' });
+    // the configured name wins over `square`
+    expect(plan('---\nsquare: rest\nkind: work\n---\n06.28 x', 'week', names))
+      .toMatchObject({ keys: ['work.png'], shape: 'circle' });
   });
 
   it('planSignature changes with the circles', () => {
@@ -128,14 +144,58 @@ describe('planAutoCircles', () => {
   });
 });
 
-describe('marker style default', () => {
-  it('is property for new installs, legacy settings keep inline or their saved value', () => {
-    expect(DEFAULT_SETTINGS.markerStyle).toBe('property');
-    expect(normalizeSettings({}).markerStyle).toBe('property');
-    expect(freshInstallSettings('en').markerStyle).toBe('property');
-    expect(migrate(null).data.settings.markerStyle).toBe('property');
-    expect(normalizeSettings({ startAge: 0 }).markerStyle).toBe('inline');
-    expect(normalizeSettings({ startAge: 0, markerStyle: 'both' }).markerStyle).toBe('both');
-    expect(normalizeSettings({ markerStyle: 'both' }).markerStyle).toBe('both');
+describe('titleCircleProps', () => {
+  const layers = (v: string): number => (v === 'none' ? 0 : v.split(/,\s*(?![^()]*\))/).length);
+  const count = (props: Record<string, string>): number => props['--wcg-title-pos'].split(', ').length;
+
+  it('no circles: empty layers and zero width', () => {
+    const p = titleCircleProps([], 'circle');
+    expect(p['--wcg-title-bg']).toBe('none');
+    expect(p['--wcg-title-pos']).toBe('0 0');
+    expect(p['--wcg-title-size']).toBe('auto');
+    expect(p['--wcg-title-w']).toBe('calc(0 * var(--wcg-ts) + 0 * var(--wcg-tg))');
+    expect(layers(p['--wcg-title-bg'])).toBe(0);
+  });
+
+  it('two layers per circle, for colour, image and unknown circles, in both shapes', () => {
+    const colour = { color: '#112233', url: null };
+    const image = { color: null, url: 'app://x/flag.png' };
+    const unknown = { color: null, url: null };
+    for (const shape of ['circle', 'square'] as const) {
+      for (const c of [colour, image, unknown]) expect(count(titleCircleProps([c], shape))).toBe(2);
+      expect(count(titleCircleProps([colour, image, unknown], shape))).toBe(6);
+    }
+  });
+
+  it('colour circle uses its colour; image uses the url; unknown the neutral fill', () => {
+    expect(titleCircleProps([{ color: '#112233', url: null }], 'circle')['--wcg-title-bg']).toContain('#112233');
+    expect(titleCircleProps([{ color: null, url: 'app://x/flag.png' }], 'circle')['--wcg-title-bg'])
+      .toContain('url("app://x/flag.png")');
+    expect(titleCircleProps([{ color: null, url: null }], 'square')['--wcg-title-bg'])
+      .toContain('var(--background-modifier-border-hover)');
+    expect(titleCircleProps([{ color: '#112233', url: null }], 'square')['--wcg-title-bg'])
+      .toContain('linear-gradient(#112233, #112233)');
+  });
+
+  it('width covers n circles and n-1 gaps; positions step by circle + gap', () => {
+    const c = { color: '#112233', url: null };
+    const p = titleCircleProps([c, c, c], 'circle');
+    expect(p['--wcg-title-w']).toBe('calc(3 * var(--wcg-ts) + 2 * var(--wcg-tg))');
+    expect(p['--wcg-title-pos']).toContain('calc(2 * (var(--wcg-ts) + var(--wcg-tg))) center');
+    expect(titleCircleProps([c], 'square')['--wcg-title-w']).toBe('calc(1 * var(--wcg-ts) + 0 * var(--wcg-tg))');
+  });
+
+  it('an unsafe colour falls back to the neutral fill', () => {
+    const bg = titleCircleProps([{ color: 'red; background: url(x)', url: null }], 'circle')['--wcg-title-bg'];
+    expect(bg).not.toContain('url(x)');
+    expect(bg).toContain('var(--background-modifier-border-hover)');
+    expect(titleCircleProps([{ color: '"};', url: null }], 'square')['--wcg-title-bg'])
+      .toContain('var(--background-modifier-border-hover)');
+  });
+
+  it('quotes in a picture url are escaped', () => {
+    const bg = titleCircleProps([{ color: null, url: 'app://x/a"b.png' }], 'circle')['--wcg-title-bg'];
+    expect(bg).toContain('url("app://x/a%22b.png")');
+    expect(bg).not.toContain('a"b');
   });
 });

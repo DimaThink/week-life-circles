@@ -105,7 +105,8 @@ export class CreateWeekModal extends Modal {
         const name = photoFileName(wDisp, yDisp, i, f.ext);
         const kb = (f.size / 1024).toFixed(0);
         const row = fileList.createDiv({ cls: 'wcg-file-row' });
-        const shown = this.host.settings.attachmentLocation === 'week-folder' ? `Attachments/${yDisp}/${name}` : name;
+        const { attachmentLocation, attachmentFolder } = this.host.settings;
+        const shown = attachmentLocation === 'folder' ? weekAttachmentPath(attachmentFolder, wDisp, yDisp, name) : name;
         row.createSpan({ text: `${icon} ${shown}  (${kb} KB)`, cls: 'wcg-file-name' });
         const rm = row.createSpan({ text: '✕', cls: 'wcg-file-remove' });
         rm.addEventListener('click', e => { e.stopPropagation(); this.photoFiles.splice(i, 1); renderFileList(); updateZone(); });
@@ -370,9 +371,9 @@ export class CreateWeekModal extends Modal {
         ww, yy, square: this.square, dates, formatDate, photoNames, settings, templateRaw,
       });
       // The note comes first, so a failed upload never leaves orphaned photos without it.
-      // week-folder: the upload names are known up front; obsidian: the attachment paths
+      // folder: the upload names are known up front; obsidian: the attachment paths
       // depend on the (now existing) note, so its links are added once the files are written.
-      const weekFolderMode = settings.attachmentLocation === 'week-folder';
+      const weekFolderMode = settings.attachmentLocation === 'folder';
       const uploadNames = weekFolderMode ? files.map((f, i) => photoFileName(ww, yy, i, f.ext)) : [];
       const initial = render([...uploadNames, ...vaultLinks]);
       await ensureParentFolders(vault, filePath);
@@ -396,7 +397,7 @@ export class CreateWeekModal extends Modal {
 
   /**
    * Save uploaded files next to the existing note at `notePath` and return how the note
-   * links to each: `week-folder` writes `<weekFolder>/Attachments/YY/WW.YY.ext` (an existing
+   * links to each: `folder` writes `<attachment folder>/WW.YY.ext` (an existing
    * file is kept, linked by name); `obsidian` asks Obsidian for a free path in its attachment
    * location and links to the result. Stops at the first failure and returns it with the
    * links of the files written so far.
@@ -409,8 +410,8 @@ export class CreateWeekModal extends Modal {
     try {
       for (let i = 0; i < files.length; i++) {
         const name = photoFileName(ww, yy, i, files[i].ext);
-        if (this.host.settings.attachmentLocation === 'week-folder') {
-          const path = weekAttachmentPath(this.host.settings.weekFolder, yy, name);
+        if (this.host.settings.attachmentLocation === 'folder') {
+          const path = weekAttachmentPath(this.host.settings.attachmentFolder, ww, yy, name);
           await ensureParentFolders(vault, path);
           if (!vault.getAbstractFileByPath(path)) await vault.createBinary(path, files[i].buffer);
           links.push(name);
